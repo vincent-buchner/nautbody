@@ -1,0 +1,14 @@
+services:
+  dev:
+    build: .
+    volumes:
+      # Mount your source code in
+      - .:/project
+      # Virtual env stays in container only, never touches your Mac
+      - venv:/project/.venv
+    working_dir: /project
+    command: sleep infinity
+    network_mode: bridge
+
+volumes:
+  venv:
