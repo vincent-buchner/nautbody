@@ -13,7 +13,7 @@ class AudioBufferQueue:
         self._audio_queue: asyncio.Queue[np.ndarray] = asyncio.Queue()
 
         self._buffer = []
-        self._target_buffer_size = sample_rate * target_chunk_duration
+        self._target_buffer_size = 512
         self._current_buffer_size = 0
 
         self.buffer_full_event = asyncio.Event()

@@ -1,11 +1,18 @@
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
 import asyncio
 import sounddevice as sd
 import numpy as np
 
-from llm import LLMProxy
-from transcribe_proxy import TranscribeEvent, TranscribeProxy
-from audio_buffer_queue import AudioBufferQueue
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT_DIR))
+
+# from app.llm import LLMProxy
+from app.transcribe_proxy import TranscribeEvent, TranscribeProxy  # noqa: E402
+from app.audio_buffer_queue import AudioBufferQueue  # noqa: E402
+from app.vad import VAD  # noqa: E402
 
 load_dotenv()
 
@@ -15,27 +22,25 @@ load_dotenv()
 # look into a way to make it continuous
 #   - What I think we can do is inttroduce a VAD before the transcribe_proxy for detecting pauses
 
+# TODO: Move to toml config
 sample_rate = 16000
 
+
+# TODO: Move to toml config (seconds)
 audio_queue = queue = AudioBufferQueue(sample_rate, 3)
 transcription_proxy = TranscribeProxy()
-llm = LLMProxy()
+vad = VAD(sample_rate)
+# llm = LLMProxy()
 
 
 async def audio_processor():
     while True:
         audio_bytes = await audio_queue.get()
         result = await asyncio.get_running_loop().run_in_executor(
-            None, transcription_proxy.transcribe, audio_bytes
+            None, vad.build_events, audio_bytes
         )
 
-        if result == TranscribeEvent.INPUT_FINISHED:
-            user_input = " ".join(transcription_proxy.get_current_text())
-            stream = llm.stream(user_input)
-            for seg in stream:
-                print(seg, flush=True, end="")
-            transcription_proxy.clear_current_text()
-            print("Finished!")
+        print(result)
 
 
 async def main():
@@ -81,3 +86,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+# ========== NOTES ==========
+#
