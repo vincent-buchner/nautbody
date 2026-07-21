@@ -10,17 +10,11 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT_DIR))
 
 # from app.llm import LLMProxy
-from app.transcribe_proxy import TranscribeEvent, TranscribeProxy  # noqa: E402
+from app.transcribe_proxy import TranscribeProxy  # noqa: E402
 from app.audio_buffer_queue import AudioBufferQueue  # noqa: E402
 from app.vad import VAD  # noqa: E402
 
 load_dotenv()
-
-
-# ============== KNOWN ISSUES ==============
-# [ ] The chunking duration time might result in poorly parsed sentences, should
-# look into a way to make it continuous
-#   - What I think we can do is inttroduce a VAD before the transcribe_proxy for detecting pauses
 
 # TODO: Move to toml config
 sample_rate = 16000
@@ -34,13 +28,37 @@ vad = VAD(sample_rate)
 
 
 async def audio_processor():
+    isSpeaking = False
+
+    # TODO: Use the AudioBufferQueue and rework
+    audio_bytes_buffer = []
     while True:
         audio_bytes = await audio_queue.get()
         result = await asyncio.get_running_loop().run_in_executor(
             None, vad.build_events, audio_bytes
         )
 
-        print(result)
+        print(result if result is not None else "", end="")
+
+        startTimeInSeconds = result.get("start") if result is not None else None
+        endTimeInSeconds = result.get("end") if result is not None else None
+
+        if startTimeInSeconds is not None:
+            isSpeaking = True
+
+        if isSpeaking:
+            audio_bytes_buffer.append(audio_bytes)
+
+        if endTimeInSeconds is not None:
+            transcription = await asyncio.get_running_loop().run_in_executor(
+                None,
+                transcription_proxy.transcribe,
+                np.array(audio_bytes_buffer).flatten(),
+            )
+            audio_bytes_buffer = []
+            isSpeaking = False
+
+            print(transcription)
 
 
 async def main():
