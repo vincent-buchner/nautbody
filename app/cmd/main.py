@@ -1,3 +1,4 @@
+from dataclasses import astuple
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
@@ -28,23 +29,42 @@ vad = VAD(sample_rate)
 
 
 async def audio_processor():
+    ######################################
+    # START OF AUDIO -> TRANSCRIBER
+    ######################################
     isSpeaking = False
 
     # TODO: Use the AudioBufferQueue and rework
     audio_bytes_buffer = []
+
+    debounce_timer: asyncio.Task | None = None
+
+    transcription_collection: list[str] = []
+
+    async def message_after_duration(seconds: float, message: str = ""):
+        await asyncio.sleep(seconds)
+        print(message)
+        nonlocal transcription_collection
+        transcription_collection = []
+
     while True:
         audio_bytes = await audio_queue.get()
         result = await asyncio.get_running_loop().run_in_executor(
             None, vad.build_events, audio_bytes
         )
 
-        print(result if result is not None else "", end="")
+        print(result if result is not None else "", end="", flush=True)
 
         startTimeInSeconds = result.get("start") if result is not None else None
         endTimeInSeconds = result.get("end") if result is not None else None
 
         if startTimeInSeconds is not None:
             isSpeaking = True
+
+            # NOTE: This is to cancel the timer when the user starts speaking
+            if debounce_timer is not None and not debounce_timer.done():
+                debounce_timer.cancel()
+                debounce_timer = None
 
         if isSpeaking:
             audio_bytes_buffer.append(audio_bytes)
@@ -55,10 +75,27 @@ async def audio_processor():
                 transcription_proxy.transcribe,
                 np.array(audio_bytes_buffer).flatten(),
             )
+            transcription_collection.append(transcription)
             audio_bytes_buffer = []
             isSpeaking = False
 
-            print(transcription)
+            debounce_timer = asyncio.create_task(
+                message_after_duration(3, " ".join(transcription_collection))
+            )
+
+    ######################################
+    # END OF AUDIO -> TRANSCRIBER
+    ######################################
+
+    ######################################
+    # START OF TRANSCRIPTS -> LLM
+    ######################################
+
+    # When transcription ends, wait `x` amount of time
+    # If start (isSpeaking) is triggered before x time reaches, only add to buffer
+    # If no start while time before x time reaches, add to buffer and send the flatten buffer to the LLM service.
+    # Then the LLM responses.
+    # Print response
 
 
 async def main():
