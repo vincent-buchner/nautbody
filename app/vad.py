@@ -5,6 +5,7 @@ import numpy as np
 class VAD:
     def __init__(self, sample_rate: int) -> None:
         self._model = load_silero_vad()
+        # TODO: Add better vad settings for padding speech
         self._vad = VADIterator(self._model, sampling_rate=sample_rate)
 
     def build_events(self, audio_bytes: np.ndarray):

@@ -22,4 +22,6 @@ class LLMProxy:
         )
 
         for delta in stream:
-            yield delta.choices[0].delta.content
+            content = delta.choices[0].delta.content
+            if content:
+                yield content

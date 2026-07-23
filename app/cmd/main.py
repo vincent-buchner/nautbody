@@ -5,12 +5,13 @@ from dotenv import load_dotenv
 import asyncio
 import sounddevice as sd
 import numpy as np
+from torch import flatten
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT_DIR))
 
-# from app.llm import LLMProxy
+from app.llm import LLMProxy
 from app.transcribe_proxy import TranscribeProxy  # noqa: E402
 from app.audio_buffer_queue import AudioBufferQueue  # noqa: E402
 from app.vad import VAD  # noqa: E402
@@ -25,7 +26,7 @@ sample_rate = 16000
 audio_queue = queue = AudioBufferQueue(sample_rate, 3)
 transcription_proxy = TranscribeProxy()
 vad = VAD(sample_rate)
-# llm = LLMProxy()
+llm = LLMProxy()
 
 
 async def audio_processor():
@@ -41,11 +42,28 @@ async def audio_processor():
 
     transcription_collection: list[str] = []
 
-    async def message_after_duration(seconds: float, message: str = ""):
+    async def message_after_duration(seconds: float):
+        # When transcription ends, wait `x` amount of time
+        # If start (isSpeaking) is triggered before x time reaches, only add to buffer
+        # If no start while time before x time reaches, add to buffer and send the flatten buffer to the LLM service.
+        # Then the LLM responses.
+        # Print response
+
         await asyncio.sleep(seconds)
-        print(message)
+
         nonlocal transcription_collection
+
+        ######################################
+        # START OF TRANSCRIPTS -> LLM
+        ######################################
+        print("Making agent response")
+        stream = llm.stream(" ".join(transcription_collection))
+        for token in stream:
+            print(token, flush=True, end="")
         transcription_collection = []
+        ######################################
+        # END OF TRANSCRIPTS -> LLM
+        ######################################
 
     while True:
         audio_bytes = await audio_queue.get()
@@ -79,23 +97,11 @@ async def audio_processor():
             audio_bytes_buffer = []
             isSpeaking = False
 
-            debounce_timer = asyncio.create_task(
-                message_after_duration(3, " ".join(transcription_collection))
-            )
+            debounce_timer = asyncio.create_task(message_after_duration(3))
 
     ######################################
     # END OF AUDIO -> TRANSCRIBER
     ######################################
-
-    ######################################
-    # START OF TRANSCRIPTS -> LLM
-    ######################################
-
-    # When transcription ends, wait `x` amount of time
-    # If start (isSpeaking) is triggered before x time reaches, only add to buffer
-    # If no start while time before x time reaches, add to buffer and send the flatten buffer to the LLM service.
-    # Then the LLM responses.
-    # Print response
 
 
 async def main():
