@@ -18,6 +18,8 @@ dependencies = [
   "torch",
   "chatterbox-tts",
   "silero-vad>=6.2.1",
+  "setuptools<81",
+  "resemble-perth>=1.0.1",
 ]
 
 [tool.pyright]

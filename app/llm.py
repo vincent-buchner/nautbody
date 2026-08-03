@@ -7,8 +7,8 @@ class LLMProxy:
     def __init__(self) -> None:
         self._client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-    def stream(self, user_input: str) -> Generator[str | None, None, None]:
-        stream = self._client.chat.completions.create(
+    def generate(self, user_input: str) -> str | None:
+        response = self._client.chat.completions.create(
             messages=[
                 {"role": "system", "content": "You are Leon from Mr. Robot"},
                 {"role": "user", "content": user_input},
@@ -18,10 +18,6 @@ class LLMProxy:
             max_completion_tokens=1024,
             top_p=1,
             stop=None,
-            stream=True,
         )
 
-        for delta in stream:
-            content = delta.choices[0].delta.content
-            if content:
-                yield content
+        return response.choices[0].message.content
