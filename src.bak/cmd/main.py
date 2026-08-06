@@ -11,11 +11,11 @@ from torch import flatten
 ROOT_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT_DIR))
 
-from app.llm import LLMProxy  # noqa: E402
-from app.transcribe_proxy import TranscribeProxy  # noqa: E402
-from app.audio_buffer_queue import AudioBufferQueue  # noqa: E402
-from app.vad import VAD  # noqa: E402
-from app.tts import TTSService  # noqa: E402
+from src.llm import LLMProxy  # noqa: E402
+from src.transcribe_proxy import TranscribeProxy  # noqa: E402
+from src.audio_buffer_queue import AudioBufferQueue  # noqa: E402
+from src.vad import VAD  # noqa: E402
+from src.tts import TTSService  # noqa: E402
 
 
 load_dotenv()
