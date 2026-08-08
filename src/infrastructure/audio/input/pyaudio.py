@@ -15,13 +15,14 @@ class PyAudioInput:
         self._channels = channels
 
     def start_microphone(self) -> Generator[bytes, None, None]:
-        self._stream = self._audio.open(
-            rate=self._sample_rate,
-            format=pyaudio.paInt16,
-            input=True,
-            channels=self._channels,
-            frames_per_buffer=self._chunk_size,
-        )
+        if self._stream is None:
+            self._stream = self._audio.open(
+                rate=self._sample_rate,
+                format=pyaudio.paInt16,
+                input=True,
+                channels=self._channels,
+                frames_per_buffer=self._chunk_size,
+            )
 
         while True:
             audio_bytes = self._stream.read(self._chunk_size)
@@ -32,4 +33,5 @@ class PyAudioInput:
             self._stream.stop_stream()
             self._stream.close()
 
+    def close_audio(self):
         self._audio.terminate()
