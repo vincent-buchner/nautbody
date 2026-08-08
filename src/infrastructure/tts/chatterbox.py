@@ -1,14 +1,14 @@
 from collections.abc import Generator
 from pathlib import Path
 
-from chatterbox.tts import ChatterboxTTS
+from chatterbox.tts import ChatterboxTTS as ChatterboxTTSModel
 
 
-class ChatterboxTTSInfra:
+class ChatterboxTTS:
     def __init__(
         self, sample_audio_path: Path | str, verbose_generation: bool = False
     ) -> None:
-        self._model = ChatterboxTTS.from_pretrained(device="cuda")
+        self._model = ChatterboxTTSModel.from_pretrained(device="cuda")
         self._model.prepare_conditionals(sample_audio_path)
         self._verbose_generation = verbose_generation
 
