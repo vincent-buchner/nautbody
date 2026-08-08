@@ -21,6 +21,7 @@ dependencies = [
   "setuptools<81",
   "resemble-perth>=1.0.1",
   "pyaudio>=0.2.14",
+  "pydantic>=2.13.4",
 ]
 
 [tool.pyright]
