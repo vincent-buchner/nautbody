@@ -3,7 +3,7 @@ from collections.abc import Awaitable
 
 
 class AsyncBufferQueue[T]:
-    async def __init__(self) -> None:
+    def __init__(self) -> None:
         self._queue = asyncio.Queue[T]()
         self._buffer: list[T] = []
 
@@ -13,6 +13,7 @@ class AsyncBufferQueue[T]:
     async def release_buffer(self) -> None:
         for item in self._buffer:
             await self._queue.put(item)
+        self._buffer.clear()
 
     async def pull(self) -> Awaitable[T]:
         return self._queue.get()

@@ -3,9 +3,7 @@ name = "alexa-clone-for-dummies"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-# requires-python = ">=3.12,<3.13"
-sys_platform = 'darwin'
-platform_machine = 'x86_64'
+requires-python = ">=3.12,<3.13"
 dependencies = [
   "faster-whisper",
   "groq",
@@ -22,8 +20,14 @@ dependencies = [
   "pyaudio>=0.2.14",
   "pydantic>=2.13.4",
   "chatterbox-streaming>=0.1.2",
+  "ml-dtypes>=0.5",
 ]
 
 [tool.pyright]
 venvPath = "/workspace"
 venv = ".venv"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
