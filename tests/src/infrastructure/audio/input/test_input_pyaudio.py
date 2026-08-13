@@ -25,7 +25,7 @@ class MockStream:
 def mock_pyaudio(pcm_bytes: bytes):
     with patch("src.infrastructure.audio.input.pyaudio.pyaudio.PyAudio") as mock_cls:
         mock_audio = mock_cls.return_value
-        mock_stream = MockStream(pcm_bytes, chunk_size=1024, bytes_per_frame=2)
+        mock_stream = MockStream(pcm_bytes, chunk_size=1024, bytes_per_frame=4)
         mock_audio.open.return_value = mock_stream
         yield mock_audio, mock_stream
 
@@ -40,7 +40,7 @@ def test_start_microphone_opens_stream_with_configured_params(mock_pyaudio):
 
     mock_audio.open.assert_called_once_with(
         rate=16_000,
-        format=pyaudio_module.paInt16,
+        format=pyaudio_module.paFloat32,
         input=True,
         channels=1,
         frames_per_buffer=1024,
@@ -54,8 +54,8 @@ def test_start_microphone_yields_chunks_from_audio_source(mock_pyaudio, pcm_byte
 
     assert len(chunks) == 5
     for chunk in chunks[:-1]:
-        assert len(chunk) == 1024 * 2
-    assert b"".join(chunks) == pcm_bytes[: 5 * 1024 * 2]
+        assert len(chunk) == 1024 * 4
+    assert b"".join(chunks) == pcm_bytes[: 5 * 1024 * 4]
 
 
 def test_start_microphone_reuses_existing_stream(mock_pyaudio):

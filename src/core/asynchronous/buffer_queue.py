@@ -1,5 +1,4 @@
 import asyncio
-from collections.abc import Awaitable
 
 
 class AsyncBufferQueue[T]:
@@ -15,5 +14,5 @@ class AsyncBufferQueue[T]:
             await self._queue.put(item)
         self._buffer.clear()
 
-    async def pull(self) -> Awaitable[T]:
-        return self._queue.get()
+    async def pull(self) -> T:
+        return await self._queue.get()

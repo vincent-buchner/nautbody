@@ -24,7 +24,7 @@ def test_init_creates_whisper_model_with_expected_params(mock_whisper_model):
 
     FastWhisperTTS()
 
-    mock_cls.assert_called_once_with("base", device="cpu", compute_type="int16")
+    mock_cls.assert_called_once_with("base", device="cpu", compute_type="int8")
 
 
 def test_generate_text_returns_joined_segment_texts(mock_whisper_model):

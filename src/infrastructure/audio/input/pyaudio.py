@@ -18,7 +18,7 @@ class PyAudioInput:
         if self._stream is None:
             self._stream = self._audio.open(
                 rate=self._sample_rate,
-                format=pyaudio.paInt16,
+                format=pyaudio.paFloat32,
                 input=True,
                 channels=self._channels,
                 frames_per_buffer=self._chunk_size,

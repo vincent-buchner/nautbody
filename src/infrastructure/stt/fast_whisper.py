@@ -4,7 +4,7 @@ from faster_whisper import WhisperModel
 
 class FastWhisperTTS:
     def __init__(self, beam_size: int = 3, language: str = "en") -> None:
-        self._model = WhisperModel("base", device="cpu", compute_type="int16")
+        self._model = WhisperModel("base", device="cpu", compute_type="int8")
         self._beam_size = beam_size
         self._language = language
 
