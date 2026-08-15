@@ -12,7 +12,11 @@ class PyAudioOutput:
     def play_speaker(self, audio_bytes: bytes) -> None:
         if self._stream is None:
             self._stream = self._audio.open(
-                format=pyaudio.paInt16, channels=self._channels, rate=self._sample_rate
+                format=pyaudio.paFloat32,
+                channels=self._channels,
+                rate=self._sample_rate,
+                output=True,
+                frames_per_buffer=2048,
             )
         self._stream.write(audio_bytes)
 

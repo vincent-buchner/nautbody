@@ -51,10 +51,17 @@ class StartConversation:
 
             if vad_result.get("end"):
                 self._is_user_speaking = False
-                np_audio_buffer = np.array(self._audio_to_text_buffer).flatten()
-                print(self._stt.generate_text(np_audio_buffer))
+                built_up_audio = np.array(self._audio_to_text_buffer).flatten()
                 self._audio_to_text_buffer.clear()
                 print("Stop Speaking")
+
+                user_text = self._stt.generate_text(built_up_audio)
+                if not user_text.strip():
+                    continue
+
+                audio = self._tts.generate_audio(user_text)
+                self._audio_out_buffer_queue.put_buffer(audio)
+                await self._audio_out_buffer_queue.release_buffer()
 
     async def _process(self) -> AsyncIterator[bytes]:
         while True:

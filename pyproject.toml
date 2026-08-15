@@ -19,8 +19,8 @@ dependencies = [
   "resemble-perth>=1.0.1",
   "pyaudio>=0.2.14",
   "pydantic>=2.13.4",
-  "chatterbox-streaming>=0.1.2",
   "ml-dtypes>=0.5",
+  "chatterbox-tts>=0.1.7",
 ]
 
 [tool.pyright]
