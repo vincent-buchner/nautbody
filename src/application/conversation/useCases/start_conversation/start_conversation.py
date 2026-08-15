@@ -3,10 +3,10 @@ from collections.abc import AsyncIterator
 
 import numpy as np
 
-from application.conversation.repo.ILLMProvider import ILLMProvider
-from application.conversation.repo.ISTT import ISTT
-from application.conversation.repo.ITTS import ITTS
-from application.conversation.repo.IVAD import IVAD
+from application.conversation.ports.ILLMProvider import ILLMProvider
+from application.conversation.ports.ISTT import ISTT
+from application.conversation.ports.ITTS import ITTS
+from application.conversation.ports.IVAD import IVAD
 from core.asynchronous.buffer_queue import AsyncBufferQueue
 
 
