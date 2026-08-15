@@ -56,10 +56,16 @@ class StartConversation:
                 print("Stop Speaking")
 
                 user_text = self._stt.generate_text(built_up_audio)
+                print(f"You said: {user_text}")
                 if not user_text.strip():
                     continue
 
-                audio = self._tts.generate_audio(user_text)
+                llm_response = self._llm_provider.generate_response(user_text)
+                print(f"LLM said: {llm_response}")
+                if llm_response is None:
+                    return
+
+                audio = self._tts.generate_audio(llm_response)
                 self._audio_out_buffer_queue.put_buffer(audio)
                 await self._audio_out_buffer_queue.release_buffer()
 

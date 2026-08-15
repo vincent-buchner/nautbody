@@ -20,12 +20,15 @@ dependencies = [
   "pyaudio>=0.2.14",
   "pydantic>=2.13.4",
   "ml-dtypes>=0.5",
-  "chatterbox-tts>=0.1.7",
+  "chatterbox-tts",
 ]
 
 [tool.pyright]
 venvPath = "/workspace"
 venv = ".venv"
+
+[tool.uv.sources]
+chatterbox-tts = { git = "https://github.com/resemble-ai/chatterbox.git" }
 
 [dependency-groups]
 dev = [
