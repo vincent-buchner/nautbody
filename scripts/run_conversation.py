@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, "src")
 
-from application.conversation.useCases.start_conversation.start_conversation import (
+from application.conversation.use_cases.start_conversation.start_conversation import (
     StartConversation,
 )
 from core.asynchronous.buffer_queue import AsyncBufferQueue
