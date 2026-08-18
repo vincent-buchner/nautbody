@@ -31,7 +31,11 @@ venv = ".venv"
 chatterbox-tts = { git = "https://github.com/resemble-ai/chatterbox.git" }
 
 [dependency-groups]
-dev = ["pytest>=9.1.1", "ruff>=0.16.3"]
+dev = [
+    "pre-commit>=4.6.2",
+    "pytest>=9.1.1",
+    "ruff>=0.16.3",
+]
 
 [tool.ruff]
 line-length = 88
