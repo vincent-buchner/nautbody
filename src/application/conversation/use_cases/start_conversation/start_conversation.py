@@ -41,35 +41,45 @@ class StartConversation:
             vad_result = self._vad.process_audio_chunk(ndarray_chunk)
 
             if vad_result is None:
-                if self._is_user_speaking:
-                    self._audio_to_text_buffer.append(ndarray_chunk)
+                self._handle_intermediate_event(ndarray_chunk)
                 continue
 
             if vad_result.get("start"):
-                self._is_user_speaking = True
-                print("Start Speaking")
+                self._handle_start_event()
 
             if vad_result.get("end"):
-                self._is_user_speaking = False
-                built_up_audio = np.array(self._audio_to_text_buffer).flatten()
-                self._audio_to_text_buffer.clear()
-                print("Stop Speaking")
-
-                user_text = self._stt.generate_text(built_up_audio)
-                print(f"You said: {user_text}")
-                if not user_text.strip():
-                    continue
-
-                llm_response = self._llm_provider.generate_response(user_text)
-                print(f"LLM said: {llm_response}")
-                if llm_response is None:
-                    return
-
-                audio = self._tts.generate_audio(llm_response)
-                self._audio_out_buffer_queue.put_buffer(audio)
-                await self._audio_out_buffer_queue.release_buffer()
+                await self._handle_end_event()
 
     async def _process(self) -> AsyncIterator[bytes]:
         while True:
             chunk = await self._audio_in_buffer_queue.pull()
             yield chunk
+
+    def _handle_intermediate_event(self, audio_chunk: np.ndarray) -> None:
+        if self._is_user_speaking:
+            self._audio_to_text_buffer.append(audio_chunk)
+
+    def _handle_start_event(self) -> None:
+        self._is_user_speaking = True
+        print("Start Speaking")
+
+    async def _handle_end_event(self) -> None:
+
+        self._is_user_speaking = False
+        built_up_audio = np.array(self._audio_to_text_buffer).flatten()
+        self._audio_to_text_buffer.clear()
+        print("Stop Speaking")
+
+        user_text = self._stt.generate_text(built_up_audio)
+        print(f"You said: {user_text}")
+        if not user_text.strip():
+            return
+
+        llm_response = self._llm_provider.generate_response(user_text)
+        print(f"LLM said: {llm_response}")
+        if llm_response is None:
+            return
+
+        audio = self._tts.generate_audio(llm_response)
+        self._audio_out_buffer_queue.put_buffer(audio)
+        await self._audio_out_buffer_queue.release_buffer()
