@@ -8,9 +8,11 @@ class SileroVAD:
         # TODO: Add better vad settings for padding speech
         self._vad = VADIterator(self._model, sampling_rate=sample_rate)
 
-    def process_audio_chunk(self, audio_bytes: np.ndarray):
+    def process_audio_chunk(
+        self, audio_bytes: np.ndarray
+    ) -> dict[str, int | float] | None:
         event = self._vad(audio_bytes, return_seconds=True)
         return event
 
-    def reset(self):
+    def reset(self) -> None:
         self._vad.reset_states()

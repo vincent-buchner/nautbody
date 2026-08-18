@@ -28,7 +28,7 @@ LLM_MODEL_CONFIG = GroqModelConfig(
 )
 
 
-def makeStartConversationUseCase(
+def make_start_conversation_use_case(
     audio_in_buffer_queue: AsyncBufferQueue, audio_out_buffer_queue: AsyncBufferQueue
 ) -> StartConversation:
 

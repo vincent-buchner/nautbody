@@ -12,7 +12,7 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
-async def test_put_buffer_does_not_release_items_until_release_buffer_called():
+async def test_put_buffer_does_not_release_items_until_release_buffer_called() -> None:
     queue = AsyncBufferQueue[str]()
     queue.put_buffer("a")
 
@@ -20,7 +20,7 @@ async def test_put_buffer_does_not_release_items_until_release_buffer_called():
         await asyncio.wait_for(queue.pull(), timeout=0.05)
 
 
-async def test_release_buffer_pushes_buffered_items_into_the_queue():
+async def test_release_buffer_pushes_buffered_items_into_the_queue() -> None:
     queue = AsyncBufferQueue[str]()
     queue.put_buffer("a")
     queue.put_buffer("b")
@@ -33,7 +33,7 @@ async def test_release_buffer_pushes_buffered_items_into_the_queue():
     assert [first, second] == ["a", "b"]
 
 
-async def test_release_buffer_preserves_fifo_order():
+async def test_release_buffer_preserves_fifo_order() -> None:
     queue = AsyncBufferQueue[int]()
     for i in range(5):
         queue.put_buffer(i)
@@ -45,7 +45,7 @@ async def test_release_buffer_preserves_fifo_order():
     assert results == [0, 1, 2, 3, 4]
 
 
-async def test_release_buffer_with_empty_buffer_is_a_noop():
+async def test_release_buffer_with_empty_buffer_is_a_noop() -> None:
     queue = AsyncBufferQueue[str]()
 
     await queue.release_buffer()
@@ -54,7 +54,7 @@ async def test_release_buffer_with_empty_buffer_is_a_noop():
         await asyncio.wait_for(queue.pull(), timeout=0.05)
 
 
-async def test_release_buffer_can_be_called_multiple_times():
+async def test_release_buffer_can_be_called_multiple_times() -> None:
     queue = AsyncBufferQueue[str]()
     queue.put_buffer("a")
     await queue.release_buffer()
@@ -68,7 +68,7 @@ async def test_release_buffer_can_be_called_multiple_times():
     assert [first, second] == ["a", "b"]
 
 
-async def test_pull_returns_the_item_directly():
+async def test_pull_returns_the_item_directly() -> None:
     queue = AsyncBufferQueue[str]()
     queue.put_buffer("a")
     await queue.release_buffer()

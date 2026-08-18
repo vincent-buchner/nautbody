@@ -1,4 +1,5 @@
 import itertools
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -22,7 +23,7 @@ class MockStream:
 
 
 @pytest.fixture
-def mock_pyaudio(pcm_bytes: bytes):
+def mock_pyaudio(pcm_bytes: bytes) -> Iterator[tuple[MagicMock, MockStream]]:
     with patch("src.infrastructure.audio.input.pyaudio.pyaudio.PyAudio") as mock_cls:
         mock_audio = mock_cls.return_value
         mock_stream = MockStream(pcm_bytes, chunk_size=1024, bytes_per_frame=4)
@@ -30,7 +31,9 @@ def mock_pyaudio(pcm_bytes: bytes):
         yield mock_audio, mock_stream
 
 
-def test_start_microphone_opens_stream_with_configured_params(mock_pyaudio):
+def test_start_microphone_opens_stream_with_configured_params(
+    mock_pyaudio: tuple[MagicMock, MockStream],
+) -> None:
     mock_audio, _ = mock_pyaudio
     audio_input = PyAudioInput(chunk_size=1024, sample_rate=16_000, channels=1)
 
@@ -47,7 +50,9 @@ def test_start_microphone_opens_stream_with_configured_params(mock_pyaudio):
     )
 
 
-def test_start_microphone_yields_chunks_from_audio_source(mock_pyaudio, pcm_bytes: bytes):
+def test_start_microphone_yields_chunks_from_audio_source(
+    mock_pyaudio: tuple[MagicMock, MockStream], pcm_bytes: bytes
+) -> None:
     audio_input = PyAudioInput(chunk_size=1024, sample_rate=16_000, channels=1)
 
     chunks = list(itertools.islice(audio_input.start_microphone(), 5))
@@ -58,7 +63,9 @@ def test_start_microphone_yields_chunks_from_audio_source(mock_pyaudio, pcm_byte
     assert b"".join(chunks) == pcm_bytes[: 5 * 1024 * 4]
 
 
-def test_start_microphone_reuses_existing_stream(mock_pyaudio):
+def test_start_microphone_reuses_existing_stream(
+    mock_pyaudio: tuple[MagicMock, MockStream],
+) -> None:
     mock_audio, _mock_stream = mock_pyaudio
     audio_input = PyAudioInput(chunk_size=1024, sample_rate=16_000, channels=1)
 
@@ -69,7 +76,9 @@ def test_start_microphone_reuses_existing_stream(mock_pyaudio):
     mock_audio.open.assert_called_once()
 
 
-def test_kill_microphone_stops_and_closes_stream(mock_pyaudio):
+def test_kill_microphone_stops_and_closes_stream(
+    mock_pyaudio: tuple[MagicMock, MockStream],
+) -> None:
     _, mock_stream = mock_pyaudio
     audio_input = PyAudioInput(chunk_size=1024, sample_rate=16_000, channels=1)
     next(audio_input.start_microphone())
@@ -80,13 +89,17 @@ def test_kill_microphone_stops_and_closes_stream(mock_pyaudio):
     mock_stream.close.assert_called_once()
 
 
-def test_kill_microphone_without_stream_is_a_noop(mock_pyaudio):
+def test_kill_microphone_without_stream_is_a_noop(
+    mock_pyaudio: tuple[MagicMock, MockStream],
+) -> None:
     audio_input = PyAudioInput(chunk_size=1024, sample_rate=16_000, channels=1)
 
     audio_input.kill_microphone()
 
 
-def test_close_audio_terminates_pyaudio(mock_pyaudio):
+def test_close_audio_terminates_pyaudio(
+    mock_pyaudio: tuple[MagicMock, MockStream],
+) -> None:
     mock_audio, _ = mock_pyaudio
     audio_input = PyAudioInput(chunk_size=1024, sample_rate=16_000, channels=1)
 

@@ -1,3 +1,4 @@
+from collections.abc import Generator, Iterator
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -12,7 +13,9 @@ def _tensor_chunk(values: list[int]) -> MagicMock:
     return tensor
 
 
-def _drain(generator):
+def _drain(
+    generator: Generator[bytes, None, list[bytes]],
+) -> tuple[list[bytes], list[bytes]]:
     chunks = []
     try:
         while True:
@@ -22,7 +25,7 @@ def _drain(generator):
 
 
 @pytest.fixture
-def mock_model_cls():
+def mock_model_cls() -> Iterator[tuple[MagicMock, MagicMock]]:
     with patch("src.infrastructure.tts.chatterbox.ChatterboxTTSModel") as mock_cls:
         mock_model = mock_cls.from_pretrained.return_value
         mock_model.generate_stream.return_value = [
@@ -32,7 +35,9 @@ def mock_model_cls():
         yield mock_cls, mock_model
 
 
-def test_init_loads_model_from_pretrained_on_cuda(mock_model_cls):
+def test_init_loads_model_from_pretrained_on_cuda(
+    mock_model_cls: tuple[MagicMock, MagicMock],
+) -> None:
     mock_cls, _ = mock_model_cls
 
     ChatterboxTTS(sample_audio_path="voice.wav")
@@ -40,7 +45,9 @@ def test_init_loads_model_from_pretrained_on_cuda(mock_model_cls):
     mock_cls.from_pretrained.assert_called_once_with(device="cuda")
 
 
-def test_init_prepares_conditionals_with_sample_audio_path(mock_model_cls):
+def test_init_prepares_conditionals_with_sample_audio_path(
+    mock_model_cls: tuple[MagicMock, MagicMock],
+) -> None:
     _, mock_model = mock_model_cls
 
     ChatterboxTTS(sample_audio_path="voice.wav")
@@ -48,7 +55,9 @@ def test_init_prepares_conditionals_with_sample_audio_path(mock_model_cls):
     mock_model.prepare_conditionals.assert_called_once_with("voice.wav")
 
 
-def test_generate_audio_calls_generate_stream_with_text(mock_model_cls):
+def test_generate_audio_calls_generate_stream_with_text(
+    mock_model_cls: tuple[MagicMock, MagicMock],
+) -> None:
     _, mock_model = mock_model_cls
     tts = ChatterboxTTS(sample_audio_path="voice.wav")
 
@@ -57,7 +66,9 @@ def test_generate_audio_calls_generate_stream_with_text(mock_model_cls):
     mock_model.generate_stream.assert_called_once_with("hello world")
 
 
-def test_generate_audio_yields_bytes_chunks(mock_model_cls):
+def test_generate_audio_yields_bytes_chunks(
+    mock_model_cls: tuple[MagicMock, MagicMock],
+) -> None:
     tts = ChatterboxTTS(sample_audio_path="voice.wav")
 
     chunks, _ = _drain(tts.generate_audio("hello"))
@@ -68,7 +79,9 @@ def test_generate_audio_yields_bytes_chunks(mock_model_cls):
     ]
 
 
-def test_generate_audio_return_value_collects_all_chunks(mock_model_cls):
+def test_generate_audio_return_value_collects_all_chunks(
+    mock_model_cls: tuple[MagicMock, MagicMock],
+) -> None:
     tts = ChatterboxTTS(sample_audio_path="voice.wav")
 
     chunks, returned = _drain(tts.generate_audio("hello"))
@@ -76,7 +89,9 @@ def test_generate_audio_return_value_collects_all_chunks(mock_model_cls):
     assert returned == chunks
 
 
-def test_generate_audio_prints_metrics_when_verbose(mock_model_cls):
+def test_generate_audio_prints_metrics_when_verbose(
+    mock_model_cls: tuple[MagicMock, MagicMock],
+) -> None:
     tts = ChatterboxTTS(sample_audio_path="voice.wav", verbose_generation=True)
 
     with patch("builtins.print") as mock_print:
@@ -85,7 +100,9 @@ def test_generate_audio_prints_metrics_when_verbose(mock_model_cls):
     assert mock_print.call_count == 2
 
 
-def test_generate_audio_does_not_print_when_not_verbose(mock_model_cls):
+def test_generate_audio_does_not_print_when_not_verbose(
+    mock_model_cls: tuple[MagicMock, MagicMock],
+) -> None:
     tts = ChatterboxTTS(sample_audio_path="voice.wav", verbose_generation=False)
 
     with patch("builtins.print") as mock_print:

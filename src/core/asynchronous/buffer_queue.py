@@ -6,7 +6,7 @@ class AsyncBufferQueue[T]:
         self._queue = asyncio.Queue[T]()
         self._buffer: list[T] = []
 
-    def put_buffer(self, item: T):
+    def put_buffer(self, item: T) -> None:
         self._buffer.append(item)
 
     async def release_buffer(self) -> None:

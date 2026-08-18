@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -8,7 +9,7 @@ from src.infrastructure.stt.fast_whisper import FastWhisperTTS
 
 
 @pytest.fixture
-def mock_whisper_model():
+def mock_whisper_model() -> Iterator[tuple[MagicMock, MagicMock]]:
     with patch("src.infrastructure.stt.fast_whisper.WhisperModel") as mock_cls:
         mock_model = mock_cls.return_value
         mock_model.transcribe.return_value = ([], MagicMock())
@@ -19,7 +20,9 @@ def _segments(*texts: str) -> list[SimpleNamespace]:
     return [SimpleNamespace(text=text) for text in texts]
 
 
-def test_init_creates_whisper_model_with_expected_params(mock_whisper_model):
+def test_init_creates_whisper_model_with_expected_params(
+    mock_whisper_model: tuple[MagicMock, MagicMock],
+) -> None:
     mock_cls, _ = mock_whisper_model
 
     FastWhisperTTS()
@@ -27,7 +30,9 @@ def test_init_creates_whisper_model_with_expected_params(mock_whisper_model):
     mock_cls.assert_called_once_with("base", device="cpu", compute_type="int8")
 
 
-def test_generate_text_returns_joined_segment_texts(mock_whisper_model):
+def test_generate_text_returns_joined_segment_texts(
+    mock_whisper_model: tuple[MagicMock, MagicMock],
+) -> None:
     _, mock_model = mock_whisper_model
     mock_model.transcribe.return_value = (_segments("hello", "world"), MagicMock())
     stt = FastWhisperTTS()
@@ -37,7 +42,9 @@ def test_generate_text_returns_joined_segment_texts(mock_whisper_model):
     assert result == "hello world"
 
 
-def test_generate_text_returns_empty_string_when_no_segments(mock_whisper_model):
+def test_generate_text_returns_empty_string_when_no_segments(
+    mock_whisper_model: tuple[MagicMock, MagicMock],
+) -> None:
     _, mock_model = mock_whisper_model
     mock_model.transcribe.return_value = (_segments(), MagicMock())
     stt = FastWhisperTTS()
@@ -47,7 +54,9 @@ def test_generate_text_returns_empty_string_when_no_segments(mock_whisper_model)
     assert result == ""
 
 
-def test_generate_text_passes_audio_and_configured_params(mock_whisper_model):
+def test_generate_text_passes_audio_and_configured_params(
+    mock_whisper_model: tuple[MagicMock, MagicMock],
+) -> None:
     _, mock_model = mock_whisper_model
     stt = FastWhisperTTS(beam_size=5, language="fr")
     audio = np.zeros(16_000, dtype=np.float32)
@@ -62,7 +71,9 @@ def test_generate_text_passes_audio_and_configured_params(mock_whisper_model):
     )
 
 
-def test_generate_text_uses_default_beam_size_and_language(mock_whisper_model):
+def test_generate_text_uses_default_beam_size_and_language(
+    mock_whisper_model: tuple[MagicMock, MagicMock],
+) -> None:
     _, mock_model = mock_whisper_model
     stt = FastWhisperTTS()
     audio = np.zeros(16_000, dtype=np.float32)

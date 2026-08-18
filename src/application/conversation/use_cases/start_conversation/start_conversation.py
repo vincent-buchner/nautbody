@@ -32,7 +32,7 @@ class StartConversation:
 
         self._is_user_speaking = False
 
-    def execute(self):
+    def execute(self) -> None:
         self._loop.create_task(self._run())
 
     async def _run(self) -> None:

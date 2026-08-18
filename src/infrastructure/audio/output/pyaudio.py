@@ -26,5 +26,5 @@ class PyAudioOutput:
         self._stream.stop_stream()
         self._stream.close()
 
-    def close_audio(self):
+    def close_audio(self) -> None:
         self._audio.terminate()

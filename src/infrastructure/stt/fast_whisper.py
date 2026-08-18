@@ -16,11 +16,11 @@ class FastWhisperTTS:
             vad_filter=True,
         )
 
-        textsArray = []
+        texts_array = []
         for seg in segments:
-            textsArray.append(seg.text)
+            texts_array.append(seg.text)
 
-        if len(textsArray) > 0:
-            return " ".join(textsArray)
+        if len(texts_array) > 0:
+            return " ".join(texts_array)
 
         return ""

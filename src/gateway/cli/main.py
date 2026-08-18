@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 sys.path.insert(0, "src")
 
 from core.asynchronous.buffer_queue import AsyncBufferQueue
-from gateway.cli.bootstrap import makeStartConversationUseCase
+from gateway.cli.bootstrap import make_start_conversation_use_case
 from infrastructure.audio.input.pyaudio import PyAudioInput
 from infrastructure.audio.output.pyaudio import PyAudioOutput
 
@@ -46,7 +46,7 @@ async def main() -> None:
     audio_in_buffer_queue = AsyncBufferQueue[bytes]()
     audio_out_buffer_queue = AsyncBufferQueue[bytes]()
 
-    conversation = makeStartConversationUseCase(
+    conversation = make_start_conversation_use_case(
         audio_in_buffer_queue, audio_out_buffer_queue
     )
     conversation.execute()
