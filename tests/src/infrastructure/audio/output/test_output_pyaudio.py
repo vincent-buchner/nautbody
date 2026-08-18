@@ -33,9 +33,11 @@ def test_play_speaker_opens_stream_with_configured_params(
     import pyaudio as pyaudio_module
 
     mock_audio.open.assert_called_once_with(
-        format=pyaudio_module.paInt16,
+        format=pyaudio_module.paFloat32,
         channels=1,
         rate=16_000,
+        output=True,
+        frames_per_buffer=2048,
     )
 
 
