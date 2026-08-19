@@ -1,0 +1,9 @@
+from typing import Protocol
+
+
+class IAudioOutput(Protocol):
+    def play_speaker(self, audio_bytes: bytes) -> None: ...
+
+    def kill_speaker(self) -> None: ...
+
+    def close_audio(self) -> None: ...

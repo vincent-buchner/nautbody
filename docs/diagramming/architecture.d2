@@ -1,0 +1,33 @@
+Infra: {
+  mic: Microphone {
+    pyaudio
+    sounddevice
+  }
+
+  tts: Text to Speech {
+    chatterbox
+    vibevoice
+  }
+  llm: LLM {
+    # Should just be combatible for
+    # other llm services
+    groq
+    openrouter
+  }
+  stt: Transciber {
+    whisper
+    fast-whisper
+  }
+}
+
+Domain
+
+Use Case
+
+Gateway: {
+  cli
+  rest_api
+  ws: Web Socket
+}
+
+Main Controller
