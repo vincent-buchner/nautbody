@@ -20,7 +20,7 @@ LLM_SYSTEM_PROMPT = "You are a helpful voice assistant. Keep responses brief."
 
 LLM_SYSTEM_PROMPT = "You are a helpful voice assistant. Keep responses brief."
 LLM_MODEL_CONFIG = GroqModelConfig(
-    model="llama-3.1-8b-instant",
+    model="openai/gpt-oss-20b",
     temperature=0.7,
     max_completion_tokens=256,
     top_p=1,
