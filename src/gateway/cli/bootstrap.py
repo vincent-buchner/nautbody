@@ -1,9 +1,9 @@
+import asyncio
 from pathlib import Path
 
 from application.conversation.use_cases.start_conversation.start_conversation import (
     StartConversation,
 )
-from core.asynchronous.buffer_queue import AsyncBufferQueue
 from infrastructure.llm_provider import GroqModelConfig, GroqProvider
 from infrastructure.stt.fast_whisper import FastWhisperTTS
 from infrastructure.tts.chatterbox import ChatterboxTTS
@@ -29,7 +29,7 @@ LLM_MODEL_CONFIG = GroqModelConfig(
 
 
 def make_start_conversation_use_case(
-    audio_in_buffer_queue: AsyncBufferQueue, audio_out_buffer_queue: AsyncBufferQueue
+    audio_in_buffer_queue: asyncio.Queue, audio_out_buffer_queue: asyncio.Queue
 ) -> StartConversation:
 
     conversation = StartConversation(

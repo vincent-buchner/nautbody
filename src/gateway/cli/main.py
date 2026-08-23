@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, "src")
 
-from core.asynchronous.buffer_queue import AsyncBufferQueue
 from gateway.cli.bootstrap import make_start_conversation_use_case
 from infrastructure.audio.input.pyaudio import PyAudioInput
 from infrastructure.audio.output.pyaudio import PyAudioOutput
@@ -21,20 +20,19 @@ VAD_CHUNK_SIZE = 512
 
 def feed_microphone(
     mic: PyAudioInput,
-    queue: AsyncBufferQueue[bytes],
+    queue: asyncio.Queue[bytes],
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     for chunk in mic.start_microphone():
-        queue.put_buffer(chunk)
-        asyncio.run_coroutine_threadsafe(queue.release_buffer(), loop)
+        asyncio.run_coroutine_threadsafe(queue.put(chunk), loop)
 
 
 async def play_audio_output(
     speaker: PyAudioOutput,
-    queue: AsyncBufferQueue[bytes],
+    queue: asyncio.Queue[bytes],
 ) -> None:
     while True:
-        audio_bytes = await queue.pull()
+        audio_bytes = await queue.get()
         await asyncio.to_thread(speaker.play_speaker, audio_bytes)
 
 
@@ -43,8 +41,8 @@ async def main() -> None:
 
     mic = PyAudioInput(sample_rate=SAMPLE_RATE, chunk_size=VAD_CHUNK_SIZE)
     speaker = PyAudioOutput(sample_rate=OUTPUT_SAMPLE_RATE)
-    audio_in_buffer_queue = AsyncBufferQueue[bytes]()
-    audio_out_buffer_queue = AsyncBufferQueue[bytes]()
+    audio_in_buffer_queue = asyncio.Queue[bytes]()
+    audio_out_buffer_queue = asyncio.Queue[bytes]()
 
     conversation = make_start_conversation_use_case(
         audio_in_buffer_queue, audio_out_buffer_queue

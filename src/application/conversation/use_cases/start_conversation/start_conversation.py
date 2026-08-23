@@ -7,7 +7,6 @@ from application.conversation.ports.ILLMProvider import ILLMProvider
 from application.conversation.ports.ISTT import ISTT
 from application.conversation.ports.ITTS import ITTS
 from application.conversation.ports.IVAD import IVAD
-from core.asynchronous.buffer_queue import AsyncBufferQueue
 
 
 class StartConversation:
@@ -17,8 +16,8 @@ class StartConversation:
         stt: ISTT,
         tts: ITTS,
         vad: IVAD,
-        audio_in_buffer_queue: AsyncBufferQueue[bytes],
-        audio_out_buffer_queue: AsyncBufferQueue[bytes],
+        audio_in_buffer_queue: asyncio.Queue[bytes],
+        audio_out_buffer_queue: asyncio.Queue[bytes],
     ) -> None:
         self._llm_provider = llm_provider
         self._stt = stt
@@ -52,7 +51,7 @@ class StartConversation:
 
     async def _process(self) -> AsyncIterator[bytes]:
         while True:
-            chunk = await self._audio_in_buffer_queue.pull()
+            chunk = await self._audio_in_buffer_queue.get()
             yield chunk
 
     def _handle_intermediate_event(self, audio_chunk: np.ndarray) -> None:
@@ -81,5 +80,4 @@ class StartConversation:
             return
 
         audio = self._tts.generate_audio(llm_response)
-        self._audio_out_buffer_queue.put_buffer(audio)
-        await self._audio_out_buffer_queue.release_buffer()
+        await self._audio_out_buffer_queue.put(audio)

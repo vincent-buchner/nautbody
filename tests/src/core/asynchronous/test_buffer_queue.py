@@ -1,7 +1,6 @@
 import asyncio
 
 import pytest
-
 from src.core.asynchronous.buffer_queue import AsyncBufferQueue
 
 pytestmark = pytest.mark.anyio
