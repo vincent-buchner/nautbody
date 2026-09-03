@@ -7,6 +7,23 @@ from application.conversation.ports.ILLMProvider import ILLMProvider
 from application.conversation.ports.ISTT import ISTT
 from application.conversation.ports.ITTS import ITTS
 from application.conversation.ports.IVAD import IVAD
+from application.conversation.use_cases.start_conversation.context import (
+    ConversationContext,
+)
+
+# We must disable E501 here, the line is not breaking
+from application.conversation.use_cases.start_conversation.deducers.user_event_deducer import (  # noqa: E501
+    UserEventDeducer,
+)
+from application.conversation.use_cases.start_conversation.event_router import (
+    EventRouter,
+)
+from application.conversation.use_cases.start_conversation.events import (
+    UserDeltaSpeakingEvent,
+    UserStartSpeakingEvent,
+    UserStopSpeakingEvent,
+)
+from application.conversation.use_cases.start_conversation.raw_data import VADData
 
 
 class StartConversation:
@@ -31,38 +48,40 @@ class StartConversation:
 
         self._is_user_speaking = False
 
+        self._event_router = EventRouter()
+        self._event_router.register("vad", UserEventDeducer())
+
     def execute(self) -> None:
         self._loop.create_task(self._run())
 
     async def _run(self) -> None:
+        self._event_router.on(UserStartSpeakingEvent, self._handle_start_event)
+        self._event_router.on(UserStopSpeakingEvent, self._handle_end_event)
+        self._event_router.on(UserDeltaSpeakingEvent, self._handle_intermediate_event)
         async for chunk in self._process():
             ndarray_chunk = np.frombuffer(chunk, dtype=np.float32).copy()
             vad_result = self._vad.process_audio_chunk(ndarray_chunk)
 
-            if vad_result is None:
-                self._handle_intermediate_event(ndarray_chunk)
-                continue
-
-            if vad_result.get("start"):
-                self._handle_start_event()
-
-            if vad_result.get("end"):
-                await self._handle_end_event()
+            data = VADData()
+            data.payload = VADData._Payload(
+                vad_data=vad_result, audio_bytes=ndarray_chunk
+            )
+            await self._event_router.process(data, ConversationContext())
 
     async def _process(self) -> AsyncIterator[bytes]:
         while True:
             chunk = await self._audio_in_buffer_queue.get()
             yield chunk
 
-    def _handle_intermediate_event(self, audio_chunk: np.ndarray) -> None:
+    def _handle_intermediate_event(self, event: UserDeltaSpeakingEvent) -> None:
         if self._is_user_speaking:
-            self._audio_to_text_buffer.append(audio_chunk)
+            self._audio_to_text_buffer.append(event.audio_bytes)
 
-    def _handle_start_event(self) -> None:
+    def _handle_start_event(self, event: UserStartSpeakingEvent) -> None:
         self._is_user_speaking = True
         print("Start Speaking")
 
-    async def _handle_end_event(self) -> None:
+    async def _handle_end_event(self, event: UserStopSpeakingEvent) -> None:
 
         self._is_user_speaking = False
         built_up_audio = np.array(self._audio_to_text_buffer).flatten()
