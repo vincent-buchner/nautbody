@@ -3,27 +3,25 @@ from collections.abc import AsyncIterator
 
 import numpy as np
 
-from application.conversation.ports.ILLMProvider import ILLMProvider
-from application.conversation.ports.ISTT import ISTT
-from application.conversation.ports.ITTS import ITTS
-from application.conversation.ports.IVAD import IVAD
-from application.conversation.use_cases.start_conversation.context import (
+from application.conversation.domain.context.context import (
     ConversationContext,
 )
-
-# We must disable E501 here, the line is not breaking
-from application.conversation.use_cases.start_conversation.deducers.user_event_deducer import (  # noqa: E501
+from application.conversation.domain.deducers.user_event_deducer import (
     UserEventDeducer,
 )
-from application.conversation.use_cases.start_conversation.event_router import (
+from application.conversation.domain.events.event_router import (
     EventRouter,
 )
-from application.conversation.use_cases.start_conversation.events import (
+from application.conversation.domain.events.events import (
     UserDeltaSpeakingEvent,
     UserStartSpeakingEvent,
     UserStopSpeakingEvent,
 )
-from application.conversation.use_cases.start_conversation.raw_data import VADData
+from application.conversation.domain.signals.vad_signal import VADSignal
+from application.conversation.ports.ILLMProvider import ILLMProvider
+from application.conversation.ports.ISTT import ISTT
+from application.conversation.ports.ITTS import ITTS
+from application.conversation.ports.IVAD import IVAD
 
 
 class StartConversation:
@@ -62,9 +60,10 @@ class StartConversation:
             ndarray_chunk = np.frombuffer(chunk, dtype=np.float32).copy()
             vad_result = self._vad.process_audio_chunk(ndarray_chunk)
 
-            data = VADData()
-            data.payload = VADData._Payload(
-                vad_data=vad_result, audio_bytes=ndarray_chunk
+            data = VADSignal(
+                payload=VADSignal.Payload(
+                    vad_data=vad_result, audio_bytes=ndarray_chunk
+                )
             )
             await self._event_router.process(data, ConversationContext())
 

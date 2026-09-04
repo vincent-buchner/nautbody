@@ -1,28 +1,28 @@
-from application.conversation.use_cases.start_conversation.context import (
+from application.conversation.domain.context.context import (
     ConversationContext,
 )
-from application.conversation.use_cases.start_conversation.deducers.IDuducer import (
+from application.conversation.domain.deducers.IDuducer import (
     Deducer,
 )
-from application.conversation.use_cases.start_conversation.events import (
+from application.conversation.domain.events.events import (
     ConversationEvent,
     UserDeltaSpeakingEvent,
     UserStartSpeakingEvent,
     UserStopSpeakingEvent,
 )
-from application.conversation.use_cases.start_conversation.raw_data import (
-    VADData,
+from application.conversation.domain.signals.vad_signal import (
+    VADSignal,
 )
 
 
-class UserEventDeducer(Deducer[VADData]):
+class UserEventDeducer(Deducer[VADSignal]):
     source_type = "vad"
 
     def __init__(self) -> None:
         pass
 
     def deduce(
-        self, data: VADData, ctx: ConversationContext
+        self, data: VADSignal, ctx: ConversationContext
     ) -> ConversationEvent | None:
         vad_data = data.payload.vad_data
         if vad_data is None:

@@ -2,16 +2,16 @@ import inspect
 from collections.abc import Awaitable, Callable
 from typing import TypeVar, cast
 
-from application.conversation.use_cases.start_conversation.context import (
+from application.conversation.domain.context.context import (
     ConversationContext,
 )
-from application.conversation.use_cases.start_conversation.deducers.IDuducer import (
+from application.conversation.domain.deducers.IDuducer import (
     Deducer,
 )
-from application.conversation.use_cases.start_conversation.events import (
+from application.conversation.domain.events.events import (
     ConversationEvent,
 )
-from application.conversation.use_cases.start_conversation.raw_data import RawData
+from application.conversation.domain.signals.signals import Signal
 
 TEvent = TypeVar("TEvent", bound=ConversationEvent)
 
@@ -43,7 +43,7 @@ class EventRouter:
             cast(EventHandler[ConversationEvent], handler)
         )
 
-    async def process(self, data: RawData, ctx: ConversationContext) -> None:
+    async def process(self, data: Signal, ctx: ConversationContext) -> None:
         deducers = self._deducers.get(data.source_type, [])
         events = (
             event
