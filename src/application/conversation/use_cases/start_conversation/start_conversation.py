@@ -9,6 +9,7 @@ from application.conversation.domain.context.context import (
 from application.conversation.domain.deducers.llm_event_deducer import (
     LLMEventDeducer,
 )
+from application.conversation.domain.deducers.stt_deducer import STTDeducer
 from application.conversation.domain.deducers.tts_deducer import TTSDeducer
 from application.conversation.domain.deducers.user_event_deducer import (
     UserEventDeducer,
@@ -20,6 +21,10 @@ from application.conversation.domain.events.llm_events import (
 from application.conversation.domain.events.router import (
     EventRouter,
 )
+from application.conversation.domain.events.stt_events import (
+    LLMTranscriptionFinished,
+    LLMTranscriptionStarted,
+)
 from application.conversation.domain.events.tts_events import (
     LLMSpeakingFinished,
     LLMSpeakingStarted,
@@ -30,6 +35,7 @@ from application.conversation.domain.events.user_events import (
     UserStopSpeakingEvent,
 )
 from application.conversation.domain.signals.llm_signal import LLMSignal
+from application.conversation.domain.signals.stt_signal import STTSignal
 from application.conversation.domain.signals.tts_signal import TTSSignal
 from application.conversation.domain.signals.vad_signal import VADSignal
 from application.conversation.ports.ILLMProvider import ILLMProvider
@@ -64,6 +70,7 @@ class StartConversation:
         self._event_router.register("vad", UserEventDeducer())
         self._event_router.register("llm_stream", LLMEventDeducer())
         self._event_router.register("tts", TTSDeducer())
+        self._event_router.register("stt", STTDeducer())
 
     def execute(self) -> None:
         self._loop.create_task(self._run())
@@ -76,6 +83,12 @@ class StartConversation:
         self._event_router.on(LLMResponseStoppedEvent, self._handle_llm_response_stop)
         self._event_router.on(LLMSpeakingStarted, self._handle_llm_started_speaking)
         self._event_router.on(LLMSpeakingFinished, self._handle_llm_finished_speaking)
+        self._event_router.on(
+            LLMTranscriptionStarted, self._handle_llm_transcription_started
+        )
+        self._event_router.on(
+            LLMTranscriptionFinished, self._handle_llm_transcription_finished
+        )
         async for chunk in self._process():
             ndarray_chunk = np.frombuffer(chunk, dtype=np.float32).copy()
             vad_result = self._vad.process_audio_chunk(ndarray_chunk)
@@ -96,8 +109,11 @@ class StartConversation:
         print(event.__class__.__name__)
 
     async def _handle_llm_response_stop(self, event: LLMResponseStoppedEvent) -> None:
-        print(event.__class__)
+        print(event.__class__.__name__)
         print(event.llm_response_text)
+        if not event.llm_response_text.strip():
+            return
+
         await self._event_router.process(
             TTSSignal(payload=TTSSignal.Payload()), ConversationContext()
         )
@@ -109,6 +125,37 @@ class StartConversation:
 
     def _handle_llm_started_speaking(self, event: LLMSpeakingStarted) -> None:
         print(event.__class__.__name__)
+
+    def _handle_llm_transcription_started(self, event: LLMTranscriptionStarted) -> None:
+        print(event.__class__.__name__)
+
+    async def _handle_llm_transcription_finished(
+        self, event: LLMTranscriptionFinished
+    ) -> None:
+        print(event.__class__.__name__)
+        print(f"transcription: {event.transcription}")
+
+        if not event.transcription.strip():
+            return
+
+        await self._event_router.process(
+            LLMSignal(
+                payload=LLMSignal.Payload(
+                    user_input=event.transcription, llm_response_text=None
+                )
+            ),
+            ConversationContext(),
+        )
+
+        llm_response = self._llm_provider.generate_response(event.transcription) or ""
+        await self._event_router.process(
+            LLMSignal(
+                payload=LLMSignal.Payload(
+                    user_input=None, llm_response_text=llm_response
+                )
+            ),
+            ConversationContext(),
+        )
 
     async def _handle_llm_finished_speaking(self, event: LLMSpeakingFinished) -> None:
         print(event.__class__.__name__)
@@ -130,26 +177,14 @@ class StartConversation:
         built_up_audio = np.array(self._audio_to_text_buffer).flatten()
         self._audio_to_text_buffer.clear()
 
-        user_text = self._stt.generate_text(built_up_audio)
-        print(f"You said: {user_text}")
-        if not user_text.strip():
-            return
-
         await self._event_router.process(
-            LLMSignal(
-                payload=LLMSignal.Payload(user_input=user_text, llm_response_text=None)
-            ),
+            STTSignal(payload=STTSignal.Payload()),
             ConversationContext(),
         )
 
-        llm_response = self._llm_provider.generate_response(user_text)
-        if llm_response is None:
-            return
+        user_text = self._stt.generate_text(built_up_audio)
+
         await self._event_router.process(
-            LLMSignal(
-                payload=LLMSignal.Payload(
-                    user_input=None, llm_response_text=llm_response
-                )
-            ),
+            STTSignal(payload=STTSignal.Payload(transcription=user_text)),
             ConversationContext(),
         )
