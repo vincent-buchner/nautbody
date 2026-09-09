@@ -5,20 +5,15 @@ from typing import TypeVar, cast
 from application.conversation.domain.context.context import (
     ConversationContext,
 )
-from application.conversation.domain.deducers.IDuducer import (
+from application.conversation.domain.deducers.duducer import (
     Deducer,
 )
-from application.conversation.domain.events.events import (
+from application.conversation.domain.events.event import (
     ConversationEvent,
 )
 from application.conversation.domain.signals.signals import Signal
 
 TEvent = TypeVar("TEvent", bound=ConversationEvent)
-
-
-# class EventDeducer[T](Protocol):
-#     def deduce(self, data: T) -> Sequence[ConversationEvent]: ...
-
 
 EventHandler = Callable[[TEvent], None | Awaitable[None]]
 

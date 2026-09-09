@@ -1,11 +1,13 @@
 from application.conversation.domain.context.context import (
     ConversationContext,
 )
-from application.conversation.domain.deducers.IDuducer import (
+from application.conversation.domain.deducers.duducer import (
     Deducer,
 )
-from application.conversation.domain.events.events import (
+from application.conversation.domain.events.event import (
     ConversationEvent,
+)
+from application.conversation.domain.events.user_events import (
     UserDeltaSpeakingEvent,
     UserStartSpeakingEvent,
     UserStopSpeakingEvent,

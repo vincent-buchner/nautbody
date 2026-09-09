@@ -3,7 +3,7 @@ from typing import Protocol
 from application.conversation.domain.context.context import (
     ConversationContext,
 )
-from application.conversation.domain.events.events import (
+from application.conversation.domain.events.event import (
     ConversationEvent,
 )
 from application.conversation.domain.signals.signals import (

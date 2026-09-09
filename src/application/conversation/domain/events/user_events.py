@@ -1,18 +1,10 @@
-from abc import ABC
 from dataclasses import dataclass
-from datetime import datetime
 
 import numpy as np
 
-
-class ConversationEvent(ABC):
-    """
-    Man, Python abstract classes are ugly looking.
-    """
-
-    @property
-    def timestamp(self) -> datetime:
-        return datetime.now()
+from application.conversation.domain.events.event import (
+    ConversationEvent,
+)
 
 
 class UserStartSpeakingEvent(ConversationEvent): ...
