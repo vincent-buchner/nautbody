@@ -8,8 +8,8 @@ from application.conversation.domain.events.event import (
     ConversationEvent,
 )
 from application.conversation.domain.events.tts_events import (
-    LLMSpeakingFinished,
-    LLMSpeakingStarted,
+    AssistantSpeakingFinishedEvent,
+    AssistantSpeakingStartedEvent,
 )
 from application.conversation.domain.signals.tts_signal import TTSSignal
 
@@ -25,7 +25,7 @@ class TTSDeducer(Deducer[TTSSignal]):
     ) -> ConversationEvent | None:
         audio_bytes = data.payload.audio_bytes
         return (
-            LLMSpeakingStarted()
+            AssistantSpeakingStartedEvent()
             if audio_bytes is None
-            else LLMSpeakingFinished(audio_bytes)
+            else AssistantSpeakingFinishedEvent(audio_bytes)
         )

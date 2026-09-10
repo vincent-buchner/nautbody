@@ -15,21 +15,21 @@ from application.conversation.domain.deducers.user_event_deducer import (
     UserEventDeducer,
 )
 from application.conversation.domain.events.llm_events import (
-    LLMResponseStartedEvent,
-    LLMResponseStoppedEvent,
+    AssistantResponseStartedEvent,
+    AssistantResponseStoppedEvent,
 )
 from application.conversation.domain.events.router import (
     EventRouter,
 )
 from application.conversation.domain.events.stt_events import (
-    LLMTranscriptionFinished,
-    LLMTranscriptionStarted,
+    AssistantTranscriptionFinishedEvent,
+    AssistantTranscriptionStartedEvent,
 )
 from application.conversation.domain.events.tts_events import (
-    LLMSpeakingFinished,
-    LLMSpeakingStarted,
+    AssistantSpeakingFinishedEvent,
+    AssistantSpeakingStartedEvent,
 )
-from application.conversation.domain.events.user_events import (
+from application.conversation.domain.events.vad_events import (
     UserDeltaSpeakingEvent,
     UserStartSpeakingEvent,
     UserStopSpeakingEvent,
@@ -79,15 +79,23 @@ class StartConversation:
         self._event_router.on(UserStartSpeakingEvent, self._handle_start_event)
         self._event_router.on(UserStopSpeakingEvent, self._handle_end_event)
         self._event_router.on(UserDeltaSpeakingEvent, self._handle_intermediate_event)
-        self._event_router.on(LLMResponseStartedEvent, self._handle_llm_response_start)
-        self._event_router.on(LLMResponseStoppedEvent, self._handle_llm_response_stop)
-        self._event_router.on(LLMSpeakingStarted, self._handle_llm_started_speaking)
-        self._event_router.on(LLMSpeakingFinished, self._handle_llm_finished_speaking)
         self._event_router.on(
-            LLMTranscriptionStarted, self._handle_llm_transcription_started
+            AssistantResponseStartedEvent, self._handle_llm_response_start
         )
         self._event_router.on(
-            LLMTranscriptionFinished, self._handle_llm_transcription_finished
+            AssistantResponseStoppedEvent, self._handle_llm_response_stop
+        )
+        self._event_router.on(
+            AssistantSpeakingStartedEvent, self._handle_llm_started_speaking
+        )
+        self._event_router.on(
+            AssistantSpeakingFinishedEvent, self._handle_llm_finished_speaking
+        )
+        self._event_router.on(
+            AssistantTranscriptionStartedEvent, self._handle_llm_transcription_started
+        )
+        self._event_router.on(
+            AssistantTranscriptionFinishedEvent, self._handle_llm_transcription_finished
         )
         async for chunk in self._process():
             ndarray_chunk = np.frombuffer(chunk, dtype=np.float32).copy()
@@ -105,10 +113,12 @@ class StartConversation:
             chunk = await self._audio_in_buffer_queue.get()
             yield chunk
 
-    def _handle_llm_response_start(self, event: LLMResponseStartedEvent) -> None:
+    def _handle_llm_response_start(self, event: AssistantResponseStartedEvent) -> None:
         print(event.__class__.__name__)
 
-    async def _handle_llm_response_stop(self, event: LLMResponseStoppedEvent) -> None:
+    async def _handle_llm_response_stop(
+        self, event: AssistantResponseStoppedEvent
+    ) -> None:
         print(event.__class__.__name__)
         print(event.llm_response_text)
         if not event.llm_response_text.strip():
@@ -123,14 +133,18 @@ class StartConversation:
             ConversationContext(),
         )
 
-    def _handle_llm_started_speaking(self, event: LLMSpeakingStarted) -> None:
+    def _handle_llm_started_speaking(
+        self, event: AssistantSpeakingStartedEvent
+    ) -> None:
         print(event.__class__.__name__)
 
-    def _handle_llm_transcription_started(self, event: LLMTranscriptionStarted) -> None:
+    def _handle_llm_transcription_started(
+        self, event: AssistantTranscriptionStartedEvent
+    ) -> None:
         print(event.__class__.__name__)
 
     async def _handle_llm_transcription_finished(
-        self, event: LLMTranscriptionFinished
+        self, event: AssistantTranscriptionFinishedEvent
     ) -> None:
         print(event.__class__.__name__)
         print(f"transcription: {event.transcription}")
@@ -157,7 +171,9 @@ class StartConversation:
             ConversationContext(),
         )
 
-    async def _handle_llm_finished_speaking(self, event: LLMSpeakingFinished) -> None:
+    async def _handle_llm_finished_speaking(
+        self, event: AssistantSpeakingFinishedEvent
+    ) -> None:
         print(event.__class__.__name__)
         await self._audio_out_buffer_queue.put(event.audio_response)
 

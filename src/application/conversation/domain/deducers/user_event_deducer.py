@@ -7,7 +7,7 @@ from application.conversation.domain.deducers.duducer import (
 from application.conversation.domain.events.event import (
     ConversationEvent,
 )
-from application.conversation.domain.events.user_events import (
+from application.conversation.domain.events.vad_events import (
     UserDeltaSpeakingEvent,
     UserStartSpeakingEvent,
     UserStopSpeakingEvent,

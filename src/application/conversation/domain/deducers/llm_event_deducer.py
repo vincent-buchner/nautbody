@@ -8,8 +8,8 @@ from application.conversation.domain.events.event import (
     ConversationEvent,
 )
 from application.conversation.domain.events.llm_events import (
-    LLMResponseStartedEvent,
-    LLMResponseStoppedEvent,
+    AssistantResponseStartedEvent,
+    AssistantResponseStoppedEvent,
 )
 from application.conversation.domain.signals.llm_signal import (
     LLMSignal,
@@ -27,7 +27,7 @@ class LLMEventDeducer(Deducer[LLMSignal]):
     ) -> ConversationEvent | None:
         payload = data.payload
         if payload.llm_response_text is not None:
-            return LLMResponseStoppedEvent(payload.llm_response_text)
+            return AssistantResponseStoppedEvent(payload.llm_response_text)
         if payload.user_input is not None:
-            return LLMResponseStartedEvent()
+            return AssistantResponseStartedEvent()
         return None

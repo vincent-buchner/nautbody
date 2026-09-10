@@ -8,8 +8,8 @@ from application.conversation.domain.events.event import (
     ConversationEvent,
 )
 from application.conversation.domain.events.stt_events import (
-    LLMTranscriptionFinished,
-    LLMTranscriptionStarted,
+    AssistantTranscriptionFinishedEvent,
+    AssistantTranscriptionStartedEvent,
 )
 from application.conversation.domain.signals.stt_signal import STTSignal
 
@@ -25,7 +25,7 @@ class STTDeducer(Deducer[STTSignal]):
     ) -> ConversationEvent | None:
         transcription = data.payload.transcription
         return (
-            LLMTranscriptionStarted()
+            AssistantTranscriptionStartedEvent()
             if transcription is None
-            else LLMTranscriptionFinished(transcription)
+            else AssistantTranscriptionFinishedEvent(transcription)
         )

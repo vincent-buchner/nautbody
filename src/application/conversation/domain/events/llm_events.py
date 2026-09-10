@@ -5,9 +5,9 @@ from application.conversation.domain.events.event import (
 )
 
 
-class LLMResponseStartedEvent(ConversationEvent): ...
+class AssistantResponseStartedEvent(ConversationEvent): ...
 
 
 @dataclass
-class LLMResponseStoppedEvent(ConversationEvent):
+class AssistantResponseStoppedEvent(ConversationEvent):
     llm_response_text: str

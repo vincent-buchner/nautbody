@@ -5,9 +5,9 @@ from application.conversation.domain.events.event import (
 )
 
 
-class LLMTranscriptionStarted(ConversationEvent): ...
+class AssistantTranscriptionStartedEvent(ConversationEvent): ...
 
 
 @dataclass
-class LLMTranscriptionFinished(ConversationEvent):
+class AssistantTranscriptionFinishedEvent(ConversationEvent):
     transcription: str

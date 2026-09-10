@@ -5,9 +5,9 @@ from application.conversation.domain.events.event import (
 )
 
 
-class LLMSpeakingStarted(ConversationEvent): ...
+class AssistantSpeakingStartedEvent(ConversationEvent): ...
 
 
 @dataclass
-class LLMSpeakingFinished(ConversationEvent):
+class AssistantSpeakingFinishedEvent(ConversationEvent):
     audio_response: bytes
