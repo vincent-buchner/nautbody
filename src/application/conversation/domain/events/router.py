@@ -11,7 +11,7 @@ from application.conversation.domain.deducers.duducer import (
 from application.conversation.domain.events.event import (
     ConversationEvent,
 )
-from application.conversation.domain.signals.signals import Signal
+from application.conversation.domain.signals.signal import Signal
 
 TEvent = TypeVar("TEvent", bound=ConversationEvent)
 

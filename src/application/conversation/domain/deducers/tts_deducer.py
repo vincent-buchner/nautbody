@@ -23,9 +23,8 @@ class TTSDeducer(Deducer[TTSSignal]):
     def deduce(
         self, data: TTSSignal, ctx: ConversationContext
     ) -> ConversationEvent | None:
-        audio_bytes = data.payload.audio_bytes
-        return (
-            AssistantSpeakingStartedEvent()
-            if audio_bytes is None
-            else AssistantSpeakingFinishedEvent(audio_bytes)
-        )
+        match data.payload:
+            case TTSSignal.StartedPayload():
+                return AssistantSpeakingStartedEvent()
+            case TTSSignal.FinishedPayload(audio_bytes=audio_bytes):
+                return AssistantSpeakingFinishedEvent(audio_bytes)

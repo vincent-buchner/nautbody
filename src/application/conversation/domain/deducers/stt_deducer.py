@@ -23,9 +23,8 @@ class STTDeducer(Deducer[STTSignal]):
     def deduce(
         self, data: STTSignal, ctx: ConversationContext
     ) -> ConversationEvent | None:
-        transcription = data.payload.transcription
-        return (
-            AssistantTranscriptionStartedEvent()
-            if transcription is None
-            else AssistantTranscriptionFinishedEvent(transcription)
-        )
+        match data.payload:
+            case STTSignal.StartedPayload():
+                return AssistantTranscriptionStartedEvent()
+            case STTSignal.FinishedPayload(transcription=transcription):
+                return AssistantTranscriptionFinishedEvent(transcription)

@@ -11,8 +11,8 @@ from application.conversation.domain.deducers.llm_event_deducer import (
 )
 from application.conversation.domain.deducers.stt_deducer import STTDeducer
 from application.conversation.domain.deducers.tts_deducer import TTSDeducer
-from application.conversation.domain.deducers.user_event_deducer import (
-    UserEventDeducer,
+from application.conversation.domain.deducers.vad_event_deducer import (
+    VADEventDeducer,
 )
 from application.conversation.domain.events.llm_events import (
     AssistantResponseStartedEvent,
@@ -67,7 +67,7 @@ class StartConversation:
         self._is_user_speaking = False
 
         self._event_router = EventRouter()
-        self._event_router.register("vad", UserEventDeducer())
+        self._event_router.register("vad", VADEventDeducer())
         self._event_router.register("llm_stream", LLMEventDeducer())
         self._event_router.register("tts", TTSDeducer())
         self._event_router.register("stt", STTDeducer())
@@ -101,12 +101,9 @@ class StartConversation:
             ndarray_chunk = np.frombuffer(chunk, dtype=np.float32).copy()
             vad_result = self._vad.process_audio_chunk(ndarray_chunk)
 
-            data = VADSignal(
-                payload=VADSignal.Payload(
-                    vad_data=vad_result, audio_bytes=ndarray_chunk
-                )
-            )
-            await self._event_router.process(data, ConversationContext())
+            data = VADSignal.from_vad_result(vad_result, ndarray_chunk)
+            if data is not None:
+                await self._event_router.process(data, ConversationContext())
 
     async def _process(self) -> AsyncIterator[bytes]:
         while True:
@@ -125,11 +122,11 @@ class StartConversation:
             return
 
         await self._event_router.process(
-            TTSSignal(payload=TTSSignal.Payload()), ConversationContext()
+            TTSSignal(payload=TTSSignal.StartedPayload()), ConversationContext()
         )
         audio = self._tts.generate_audio(event.llm_response_text)
         await self._event_router.process(
-            TTSSignal(payload=TTSSignal.Payload(audio_bytes=audio)),
+            TTSSignal(payload=TTSSignal.FinishedPayload(audio_bytes=audio)),
             ConversationContext(),
         )
 
@@ -153,20 +150,14 @@ class StartConversation:
             return
 
         await self._event_router.process(
-            LLMSignal(
-                payload=LLMSignal.Payload(
-                    user_input=event.transcription, llm_response_text=None
-                )
-            ),
+            LLMSignal(payload=LLMSignal.StartedPayload(user_input=event.transcription)),
             ConversationContext(),
         )
 
         llm_response = self._llm_provider.generate_response(event.transcription) or ""
         await self._event_router.process(
             LLMSignal(
-                payload=LLMSignal.Payload(
-                    user_input=None, llm_response_text=llm_response
-                )
+                payload=LLMSignal.FinishedPayload(llm_response_text=llm_response)
             ),
             ConversationContext(),
         )
@@ -194,13 +185,13 @@ class StartConversation:
         self._audio_to_text_buffer.clear()
 
         await self._event_router.process(
-            STTSignal(payload=STTSignal.Payload()),
+            STTSignal(payload=STTSignal.StartedPayload()),
             ConversationContext(),
         )
 
         user_text = self._stt.generate_text(built_up_audio)
 
         await self._event_router.process(
-            STTSignal(payload=STTSignal.Payload(transcription=user_text)),
+            STTSignal(payload=STTSignal.FinishedPayload(transcription=user_text)),
             ConversationContext(),
         )

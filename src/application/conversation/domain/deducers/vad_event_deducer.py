@@ -17,7 +17,7 @@ from application.conversation.domain.signals.vad_signal import (
 )
 
 
-class UserEventDeducer(Deducer[VADSignal]):
+class VADEventDeducer(Deducer[VADSignal]):
     source_type = "vad"
 
     def __init__(self) -> None:
@@ -26,10 +26,10 @@ class UserEventDeducer(Deducer[VADSignal]):
     def deduce(
         self, data: VADSignal, ctx: ConversationContext
     ) -> ConversationEvent | None:
-        vad_data = data.payload.vad_data
-        if vad_data is None:
-            return UserDeltaSpeakingEvent(data.payload.audio_bytes)
-        if vad_data.get("start"):
-            return UserStartSpeakingEvent()
-        if vad_data.get("end"):
-            return UserStopSpeakingEvent()
+        match data.payload:
+            case VADSignal.StartedPayload():
+                return UserStartSpeakingEvent()
+            case VADSignal.DeltaPayload(audio_bytes=audio_bytes):
+                return UserDeltaSpeakingEvent(audio_bytes)
+            case VADSignal.StoppedPayload():
+                return UserStopSpeakingEvent()

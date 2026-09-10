@@ -6,14 +6,11 @@ from application.conversation.domain.context.context import (
 from application.conversation.domain.events.event import (
     ConversationEvent,
 )
-from application.conversation.domain.signals.signals import (
-    SourceType,
-    TSignal,
-)
+from application.conversation.domain.signals.signal import TSignal
 
 
 class Deducer(Protocol[TSignal]):
-    source_type: SourceType
+    source_type: str
 
     def deduce(
         self, data: TSignal, ctx: ConversationContext

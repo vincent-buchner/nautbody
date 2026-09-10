@@ -25,9 +25,8 @@ class LLMEventDeducer(Deducer[LLMSignal]):
     def deduce(
         self, data: LLMSignal, ctx: ConversationContext
     ) -> ConversationEvent | None:
-        payload = data.payload
-        if payload.llm_response_text is not None:
-            return AssistantResponseStoppedEvent(payload.llm_response_text)
-        if payload.user_input is not None:
-            return AssistantResponseStartedEvent()
-        return None
+        match data.payload:
+            case LLMSignal.StartedPayload():
+                return AssistantResponseStartedEvent()
+            case LLMSignal.FinishedPayload(llm_response_text=llm_response_text):
+                return AssistantResponseStoppedEvent(llm_response_text)
