@@ -10,6 +10,9 @@ from application.conversation.domain.events.event import (
 class UserStartSpeakingEvent(ConversationEvent): ...
 
 
+class UserInterruptedAssistantEvent(ConversationEvent): ...
+
+
 @dataclass
 class UserDeltaSpeakingEvent(ConversationEvent):
     audio_bytes: np.ndarray

@@ -25,6 +25,7 @@ class STTDeducer(Deducer[STTSignal]):
     ) -> ConversationEvent | None:
         match data.payload:
             case STTSignal.StartedPayload():
-                return AssistantTranscriptionStartedEvent()
+                if not ctx.is_user_speaking:
+                    return AssistantTranscriptionStartedEvent()
             case STTSignal.FinishedPayload(transcription=transcription):
                 return AssistantTranscriptionFinishedEvent(transcription)

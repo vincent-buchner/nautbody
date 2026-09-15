@@ -27,6 +27,7 @@ class LLMEventDeducer(Deducer[LLMSignal]):
     ) -> ConversationEvent | None:
         match data.payload:
             case LLMSignal.StartedPayload():
-                return AssistantResponseStartedEvent()
+                if not ctx.is_user_speaking:
+                    return AssistantResponseStartedEvent()
             case LLMSignal.FinishedPayload(llm_response_text=llm_response_text):
                 return AssistantResponseStoppedEvent(llm_response_text)

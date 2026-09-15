@@ -9,6 +9,7 @@ from application.conversation.domain.events.event import (
 )
 from application.conversation.domain.events.vad_events import (
     UserDeltaSpeakingEvent,
+    UserInterruptedAssistantEvent,
     UserStartSpeakingEvent,
     UserStopSpeakingEvent,
 )
@@ -28,8 +29,12 @@ class VADEventDeducer(Deducer[VADSignal]):
     ) -> ConversationEvent | None:
         match data.payload:
             case VADSignal.StartedPayload():
+                ctx.is_user_speaking = True
+                if ctx.is_assistant_speaking:
+                    return UserInterruptedAssistantEvent()
                 return UserStartSpeakingEvent()
             case VADSignal.DeltaPayload(audio_bytes=audio_bytes):
                 return UserDeltaSpeakingEvent(audio_bytes)
             case VADSignal.StoppedPayload():
+                ctx.is_user_speaking = False
                 return UserStopSpeakingEvent()

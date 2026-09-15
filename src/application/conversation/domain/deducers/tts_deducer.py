@@ -25,6 +25,7 @@ class TTSDeducer(Deducer[TTSSignal]):
     ) -> ConversationEvent | None:
         match data.payload:
             case TTSSignal.StartedPayload():
-                return AssistantSpeakingStartedEvent()
+                if not ctx.is_user_speaking:
+                    return AssistantSpeakingStartedEvent()
             case TTSSignal.FinishedPayload(audio_bytes=audio_bytes):
                 return AssistantSpeakingFinishedEvent(audio_bytes)
