@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import AsyncIterator
+from typing import TypeVar
 
 import numpy as np
 
@@ -14,20 +15,18 @@ from application.conversation.domain.deducers.tts_deducer import TTSDeducer
 from application.conversation.domain.deducers.vad_event_deducer import (
     VADEventDeducer,
 )
+from application.conversation.domain.events.event import (
+    ConversationEvent,
+)
 from application.conversation.domain.events.llm_events import (
-    AssistantResponseStartedEvent,
     AssistantResponseStoppedEvent,
 )
 from application.conversation.domain.events.router import (
+    EventHandler,
     EventRouter,
 )
 from application.conversation.domain.events.stt_events import (
     AssistantTranscriptionFinishedEvent,
-    AssistantTranscriptionStartedEvent,
-)
-from application.conversation.domain.events.tts_events import (
-    AssistantSpeakingFinishedEvent,
-    AssistantSpeakingStartedEvent,
 )
 from application.conversation.domain.events.vad_events import (
     UserDeltaSpeakingEvent,
@@ -37,12 +36,16 @@ from application.conversation.domain.events.vad_events import (
 )
 from application.conversation.domain.signals.llm_signal import LLMSignal
 from application.conversation.domain.signals.stt_signal import STTSignal
-from application.conversation.domain.signals.tts_signal import TTSSignal
+from application.conversation.domain.signals.tts_signal import (
+    TTSSignal,
+)
 from application.conversation.domain.signals.vad_signal import VADSignal
 from application.conversation.ports.ILLMProvider import ILLMProvider
 from application.conversation.ports.ISTT import ISTT
 from application.conversation.ports.ITTS import ITTS
 from application.conversation.ports.IVAD import IVAD
+
+TEvent = TypeVar("TEvent", bound=ConversationEvent)
 
 
 class StartConversation:
@@ -52,8 +55,7 @@ class StartConversation:
         stt: ISTT,
         tts: ITTS,
         vad: IVAD,
-        audio_in_buffer_queue: asyncio.Queue[bytes],
-        audio_out_buffer_queue: asyncio.Queue[bytes],
+        audio_chunks: AsyncIterator[bytes],
     ) -> None:
         self._llm_provider = llm_provider
         self._stt = stt
@@ -61,8 +63,7 @@ class StartConversation:
         self._vad = vad
 
         self._loop = asyncio.get_running_loop()
-        self._audio_in_buffer_queue = audio_in_buffer_queue
-        self._audio_out_buffer_queue = audio_out_buffer_queue
+        self._audio_chunks = audio_chunks
         self._audio_to_text_buffer: list[np.ndarray] = []
         self._active_turn: asyncio.Task[None] | None = None
 
@@ -73,6 +74,9 @@ class StartConversation:
         self._event_router.register("llm_stream", LLMEventDeducer())
         self._event_router.register("tts", TTSDeducer())
         self._event_router.register("stt", STTDeducer())
+
+    def on(self, event_type: type[TEvent], handler: EventHandler[TEvent]) -> None:
+        self._event_router.on(event_type, handler)
 
     def execute(self) -> None:
         self._loop.create_task(self._run())
@@ -85,24 +89,12 @@ class StartConversation:
             UserInterruptedAssistantEvent, self._handle_interruption_event
         )
         self._event_router.on(
-            AssistantResponseStartedEvent, self._handle_llm_response_start
-        )
-        self._event_router.on(
             AssistantResponseStoppedEvent, self._handle_llm_response_stop
-        )
-        self._event_router.on(
-            AssistantSpeakingStartedEvent, self._handle_llm_started_speaking
-        )
-        self._event_router.on(
-            AssistantSpeakingFinishedEvent, self._handle_llm_finished_speaking
-        )
-        self._event_router.on(
-            AssistantTranscriptionStartedEvent, self._handle_llm_transcription_started
         )
         self._event_router.on(
             AssistantTranscriptionFinishedEvent, self._handle_llm_transcription_finished
         )
-        async for chunk in self._process():
+        async for chunk in self._audio_chunks:
             ndarray_chunk = np.frombuffer(chunk, dtype=np.float32).copy()
             vad_result = self._vad.process_audio_chunk(ndarray_chunk)
 
@@ -110,19 +102,9 @@ class StartConversation:
             if data is not None:
                 await self._event_router.process(data, self._ctx)
 
-    async def _process(self) -> AsyncIterator[bytes]:
-        while True:
-            chunk = await self._audio_in_buffer_queue.get()
-            yield chunk
-
-    def _handle_llm_response_start(self, event: AssistantResponseStartedEvent) -> None:
-        print(event.__class__.__name__)
-
     async def _handle_llm_response_stop(
         self, event: AssistantResponseStoppedEvent
     ) -> None:
-        print(event.__class__.__name__)
-        print(event.llm_response_text)
         if not event.llm_response_text.strip():
             return
 
@@ -134,15 +116,9 @@ class StartConversation:
             TTSSignal(payload=TTSSignal.FinishedPayload(audio_bytes=audio)), self._ctx
         )
 
-    def _drain_queue(self, queue: asyncio.Queue[bytes]) -> None:
-        while not queue.empty():
-            queue.get_nowait()
-
     async def _handle_interruption_event(
         self, event: UserInterruptedAssistantEvent
     ) -> None:
-        print(event.__class__.__name__)
-
         if self._active_turn is not None:
             self._active_turn.cancel()
             try:
@@ -151,26 +127,15 @@ class StartConversation:
                 pass
             self._active_turn = None
 
-        self._drain_queue(self._audio_out_buffer_queue)
+        await self._event_router.process(
+            TTSSignal(payload=TTSSignal.CancelledPayload()), self._ctx
+        )
         self._audio_to_text_buffer.clear()
         self._ctx.is_assistant_speaking = False
-
-    def _handle_llm_started_speaking(
-        self, event: AssistantSpeakingStartedEvent
-    ) -> None:
-        print(event.__class__.__name__)
-
-    def _handle_llm_transcription_started(
-        self, event: AssistantTranscriptionStartedEvent
-    ) -> None:
-        print(event.__class__.__name__)
 
     async def _handle_llm_transcription_finished(
         self, event: AssistantTranscriptionFinishedEvent
     ) -> None:
-        print(event.__class__.__name__)
-        print(f"transcription: {event.transcription}")
-
         if not event.transcription.strip():
             return
 
@@ -187,23 +152,14 @@ class StartConversation:
             self._ctx,
         )
 
-    async def _handle_llm_finished_speaking(
-        self, event: AssistantSpeakingFinishedEvent
-    ) -> None:
-        print(event.__class__.__name__)
-        await self._audio_out_buffer_queue.put(event.audio_response)
-
     def _handle_intermediate_event(self, event: UserDeltaSpeakingEvent) -> None:
         if self._ctx.is_user_speaking:
-            print(event.__class__.__name__)
             self._audio_to_text_buffer.append(event.audio_bytes)
 
     def _handle_start_event(self, event: UserStartSpeakingEvent) -> None:
-        print(event.__class__.__name__)
         self._ctx.is_user_speaking = True
 
     def _handle_end_event(self, event: UserStopSpeakingEvent) -> None:
-        print(event.__class__.__name__)
         self._ctx.is_user_speaking = False
         built_up_audio = np.array(self._audio_to_text_buffer).flatten()
         self._audio_to_text_buffer.clear()

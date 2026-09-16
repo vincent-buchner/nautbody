@@ -14,7 +14,11 @@ class TTSSignal(Signal):
     class FinishedPayload:
         audio_bytes: bytes
 
-    Payload = StartedPayload | FinishedPayload
+    @dataclass(frozen=True)
+    class CancelledPayload:
+        pass
+
+    Payload = StartedPayload | FinishedPayload | CancelledPayload
 
     payload: Payload
     source_type: Literal["tts"] = "tts"

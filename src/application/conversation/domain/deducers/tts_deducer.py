@@ -8,6 +8,7 @@ from application.conversation.domain.events.event import (
     ConversationEvent,
 )
 from application.conversation.domain.events.tts_events import (
+    AssistantSpeakingCancelledEvent,
     AssistantSpeakingFinishedEvent,
     AssistantSpeakingStartedEvent,
 )
@@ -29,3 +30,5 @@ class TTSDeducer(Deducer[TTSSignal]):
                     return AssistantSpeakingStartedEvent()
             case TTSSignal.FinishedPayload(audio_bytes=audio_bytes):
                 return AssistantSpeakingFinishedEvent(audio_bytes)
+            case TTSSignal.CancelledPayload():
+                return AssistantSpeakingCancelledEvent()

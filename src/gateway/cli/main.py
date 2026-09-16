@@ -2,12 +2,14 @@ import asyncio
 import os
 import sys
 import threading
+from collections.abc import AsyncIterator
 
 from dotenv import load_dotenv
 
 sys.path.insert(0, "src")
 
 from gateway.cli.bootstrap import make_start_conversation_use_case
+from gateway.cli.handlers import register_cli_handlers
 from infrastructure.audio.input.pyaudio import PyAudioInput
 from infrastructure.audio.output.pyaudio import PyAudioOutput
 
@@ -25,6 +27,13 @@ def feed_microphone(
 ) -> None:
     for chunk in mic.start_microphone():
         asyncio.run_coroutine_threadsafe(queue.put(chunk), loop)
+
+
+async def audio_chunks_from_queue(
+    queue: asyncio.Queue[bytes],
+) -> AsyncIterator[bytes]:
+    while True:
+        yield await queue.get()
 
 
 async def play_audio_output(
@@ -45,8 +54,9 @@ async def main() -> None:
     audio_out_buffer_queue = asyncio.Queue[bytes]()
 
     conversation = make_start_conversation_use_case(
-        audio_in_buffer_queue, audio_out_buffer_queue
+        audio_chunks_from_queue(audio_in_buffer_queue)
     )
+    register_cli_handlers(conversation, audio_out_buffer_queue)
     conversation.execute()
 
     loop.create_task(play_audio_output(speaker, audio_out_buffer_queue))

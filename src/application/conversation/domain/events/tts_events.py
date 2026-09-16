@@ -11,3 +11,6 @@ class AssistantSpeakingStartedEvent(ConversationEvent): ...
 @dataclass
 class AssistantSpeakingFinishedEvent(ConversationEvent):
     audio_response: bytes
+
+
+class AssistantSpeakingCancelledEvent(ConversationEvent): ...
