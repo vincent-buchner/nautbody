@@ -30,5 +30,7 @@ class GroqProvider:
             messages=self._messages,
             **self._model_config,
         )
+        response_text = response.choices[0].message.content
+        self._messages.append({"role": "assistant", "content": response_text})
 
-        return response.choices[0].message.content
+        return response_text

@@ -1,4 +1,4 @@
-import asyncio
+from collections.abc import AsyncIterator
 from pathlib import Path
 
 from application.conversation.use_cases.start_conversation.start_conversation import (
@@ -29,7 +29,7 @@ LLM_MODEL_CONFIG = GroqModelConfig(
 
 
 def make_start_conversation_use_case(
-    audio_in_buffer_queue: asyncio.Queue, audio_out_buffer_queue: asyncio.Queue
+    audio_chunks: AsyncIterator[bytes],
 ) -> StartConversation:
 
     conversation = StartConversation(
@@ -39,8 +39,7 @@ def make_start_conversation_use_case(
         stt=FastWhisperTTS(),
         tts=ChatterboxTTS(sample_audio_path=SAMPLE_AUDIO_PATH),
         vad=SileroVAD(sample_rate=SAMPLE_RATE),
-        audio_in_buffer_queue=audio_in_buffer_queue,
-        audio_out_buffer_queue=audio_out_buffer_queue,
+        audio_chunks=audio_chunks,
     )
 
     return conversation

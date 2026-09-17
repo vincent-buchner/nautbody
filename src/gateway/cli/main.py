@@ -2,12 +2,14 @@ import asyncio
 import os
 import sys
 import threading
+from collections.abc import AsyncIterator
 
 from dotenv import load_dotenv
 
 sys.path.insert(0, "src")
 
 from gateway.cli.bootstrap import make_start_conversation_use_case
+from gateway.cli.handlers import register_cli_handlers
 from infrastructure.audio.input.pyaudio import PyAudioInput
 from infrastructure.audio.output.pyaudio import PyAudioOutput
 
@@ -16,6 +18,9 @@ load_dotenv()
 SAMPLE_RATE = 16_000
 OUTPUT_SAMPLE_RATE = 24_000
 VAD_CHUNK_SIZE = 512
+
+mic = PyAudioInput(sample_rate=SAMPLE_RATE, chunk_size=VAD_CHUNK_SIZE)
+speaker = PyAudioOutput(sample_rate=OUTPUT_SAMPLE_RATE)
 
 
 def feed_microphone(
@@ -27,26 +32,37 @@ def feed_microphone(
         asyncio.run_coroutine_threadsafe(queue.put(chunk), loop)
 
 
+async def audio_chunks_from_queue(
+    queue: asyncio.Queue[bytes],
+) -> AsyncIterator[bytes]:
+    while True:
+        yield await queue.get()
+
+
 async def play_audio_output(
     speaker: PyAudioOutput,
     queue: asyncio.Queue[bytes],
 ) -> None:
     while True:
         audio_bytes = await queue.get()
-        await asyncio.to_thread(speaker.play_speaker, audio_bytes)
+        try:
+            await asyncio.to_thread(speaker.play_speaker, audio_bytes)
+        except OSError:
+            # kill_speaker() can close the stream from under this write to
+            # cut off a barge-in; that's expected, not a real failure.
+            pass
 
 
 async def main() -> None:
     loop = asyncio.get_running_loop()
 
-    mic = PyAudioInput(sample_rate=SAMPLE_RATE, chunk_size=VAD_CHUNK_SIZE)
-    speaker = PyAudioOutput(sample_rate=OUTPUT_SAMPLE_RATE)
     audio_in_buffer_queue = asyncio.Queue[bytes]()
     audio_out_buffer_queue = asyncio.Queue[bytes]()
 
     conversation = make_start_conversation_use_case(
-        audio_in_buffer_queue, audio_out_buffer_queue
+        audio_chunks_from_queue(audio_in_buffer_queue)
     )
+    register_cli_handlers(conversation, audio_out_buffer_queue, speaker)
     conversation.execute()
 
     loop.create_task(play_audio_output(speaker, audio_out_buffer_queue))
