@@ -164,7 +164,6 @@ class StartConversation:
         built_up_audio = np.array(self._audio_to_text_buffer).flatten()
         self._audio_to_text_buffer.clear()
 
-        self._ctx.is_assistant_speaking = True
         self._active_turn = self._loop.create_task(
             self._run_response_pipeline(built_up_audio)
         )
@@ -181,5 +180,4 @@ class StartConversation:
                 self._ctx,
             )
         finally:
-            self._ctx.is_assistant_speaking = False
             self._active_turn = None

@@ -23,10 +23,22 @@ from application.conversation.domain.events.vad_events import (
 from application.conversation.use_cases.start_conversation.start_conversation import (
     StartConversation,
 )
+from infrastructure.audio.output.pyaudio import PyAudioOutput
 
 
-def handle_user_start_speaking(event: UserStartSpeakingEvent) -> None:
-    print(event.__class__.__name__)
+def make_handle_user_started_speaking(
+    speaker: PyAudioOutput,
+    audio_out_buffer_queue: asyncio.Queue[bytes],
+) -> Callable[[UserStartSpeakingEvent | UserInterruptedAssistantEvent], None]:
+    def handle_user_started_speaking(
+        event: UserStartSpeakingEvent | UserInterruptedAssistantEvent,
+    ) -> None:
+        print(event.__class__.__name__)
+        speaker.kill_speaker()
+        while not audio_out_buffer_queue.empty():
+            audio_out_buffer_queue.get_nowait()
+
+    return handle_user_started_speaking
 
 
 def handle_user_stop_speaking(event: UserStopSpeakingEvent) -> None:
@@ -34,10 +46,6 @@ def handle_user_stop_speaking(event: UserStopSpeakingEvent) -> None:
 
 
 def handle_user_delta_speaking(event: UserDeltaSpeakingEvent) -> None:
-    print(event.__class__.__name__)
-
-
-def handle_user_interrupted_assistant(event: UserInterruptedAssistantEvent) -> None:
     print(event.__class__.__name__)
 
 
@@ -95,6 +103,7 @@ def make_handle_assistant_speaking_cancelled(
 def register_cli_handlers(
     conversation: StartConversation,
     audio_out_buffer_queue: asyncio.Queue[bytes],
+    speaker: PyAudioOutput,
 ) -> None:
     """Attach the CLI's presentation-only listeners to a conversation.
 
@@ -104,10 +113,13 @@ def register_cli_handlers(
     API gateway would register its own websocket-flavored handlers here
     instead of reusing these.
     """
-    conversation.on(UserStartSpeakingEvent, handle_user_start_speaking)
+    handle_user_started_speaking = make_handle_user_started_speaking(
+        speaker, audio_out_buffer_queue
+    )
+    conversation.on(UserStartSpeakingEvent, handle_user_started_speaking)
     conversation.on(UserStopSpeakingEvent, handle_user_stop_speaking)
     conversation.on(UserDeltaSpeakingEvent, handle_user_delta_speaking)
-    conversation.on(UserInterruptedAssistantEvent, handle_user_interrupted_assistant)
+    conversation.on(UserInterruptedAssistantEvent, handle_user_started_speaking)
     conversation.on(AssistantResponseStartedEvent, handle_assistant_response_started)
     conversation.on(AssistantResponseStoppedEvent, handle_assistant_response_stopped)
     conversation.on(

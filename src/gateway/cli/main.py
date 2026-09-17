@@ -19,6 +19,9 @@ SAMPLE_RATE = 16_000
 OUTPUT_SAMPLE_RATE = 24_000
 VAD_CHUNK_SIZE = 512
 
+mic = PyAudioInput(sample_rate=SAMPLE_RATE, chunk_size=VAD_CHUNK_SIZE)
+speaker = PyAudioOutput(sample_rate=OUTPUT_SAMPLE_RATE)
+
 
 def feed_microphone(
     mic: PyAudioInput,
@@ -42,21 +45,24 @@ async def play_audio_output(
 ) -> None:
     while True:
         audio_bytes = await queue.get()
-        await asyncio.to_thread(speaker.play_speaker, audio_bytes)
+        try:
+            await asyncio.to_thread(speaker.play_speaker, audio_bytes)
+        except OSError:
+            # kill_speaker() can close the stream from under this write to
+            # cut off a barge-in; that's expected, not a real failure.
+            pass
 
 
 async def main() -> None:
     loop = asyncio.get_running_loop()
 
-    mic = PyAudioInput(sample_rate=SAMPLE_RATE, chunk_size=VAD_CHUNK_SIZE)
-    speaker = PyAudioOutput(sample_rate=OUTPUT_SAMPLE_RATE)
     audio_in_buffer_queue = asyncio.Queue[bytes]()
     audio_out_buffer_queue = asyncio.Queue[bytes]()
 
     conversation = make_start_conversation_use_case(
         audio_chunks_from_queue(audio_in_buffer_queue)
     )
-    register_cli_handlers(conversation, audio_out_buffer_queue)
+    register_cli_handlers(conversation, audio_out_buffer_queue, speaker)
     conversation.execute()
 
     loop.create_task(play_audio_output(speaker, audio_out_buffer_queue))
