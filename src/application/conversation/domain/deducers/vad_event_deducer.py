@@ -30,7 +30,7 @@ class VADEventDeducer(Deducer[VADSignal]):
         match data.payload:
             case VADSignal.StartedPayload():
                 ctx.is_user_speaking = True
-                if ctx.is_assistant_speaking:
+                if ctx.is_assistant_processing:
                     return UserInterruptedAssistantEvent()
                 return UserStartSpeakingEvent()
             case VADSignal.DeltaPayload(audio_bytes=audio_bytes):

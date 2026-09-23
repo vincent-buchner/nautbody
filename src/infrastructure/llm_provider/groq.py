@@ -27,7 +27,7 @@ class GroqProvider:
         self._messages.append({"role": "user", "content": user_input})
 
         response = self._client.chat.completions.create(
-            messages=self._messages,
+            messages=list(self._messages),
             **self._model_config,
         )
         response_text = response.choices[0].message.content

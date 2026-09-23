@@ -118,7 +118,6 @@ def register_cli_handlers(
     )
     conversation.on(UserStartSpeakingEvent, handle_user_started_speaking)
     conversation.on(UserStopSpeakingEvent, handle_user_stop_speaking)
-    conversation.on(UserDeltaSpeakingEvent, handle_user_delta_speaking)
     conversation.on(UserInterruptedAssistantEvent, handle_user_started_speaking)
     conversation.on(AssistantResponseStartedEvent, handle_assistant_response_started)
     conversation.on(AssistantResponseStoppedEvent, handle_assistant_response_stopped)

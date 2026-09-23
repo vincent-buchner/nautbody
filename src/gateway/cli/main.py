@@ -45,12 +45,7 @@ async def play_audio_output(
 ) -> None:
     while True:
         audio_bytes = await queue.get()
-        try:
-            await asyncio.to_thread(speaker.play_speaker, audio_bytes)
-        except OSError:
-            # kill_speaker() can close the stream from under this write to
-            # cut off a barge-in; that's expected, not a real failure.
-            pass
+        await asyncio.to_thread(speaker.play_speaker, audio_bytes)
 
 
 async def main() -> None:

@@ -111,7 +111,9 @@ class StartConversation:
         await self._event_router.process(
             TTSSignal(payload=TTSSignal.StartedPayload()), self._ctx
         )
-        audio = self._tts.generate_audio(event.llm_response_text)
+        audio = await asyncio.to_thread(
+            self._tts.generate_audio, event.llm_response_text
+        )
         await self._event_router.process(
             TTSSignal(payload=TTSSignal.FinishedPayload(audio_bytes=audio)), self._ctx
         )
@@ -131,7 +133,7 @@ class StartConversation:
             TTSSignal(payload=TTSSignal.CancelledPayload()), self._ctx
         )
         self._audio_to_text_buffer.clear()
-        self._ctx.is_assistant_speaking = False
+        self._ctx.is_assistant_processing = False
 
     async def _handle_llm_transcription_finished(
         self, event: AssistantTranscriptionFinishedEvent
@@ -144,7 +146,12 @@ class StartConversation:
             self._ctx,
         )
 
-        llm_response = self._llm_provider.generate_response(event.transcription) or ""
+        llm_response = (
+            await asyncio.to_thread(
+                self._llm_provider.generate_response, event.transcription
+            )
+            or ""
+        )
         await self._event_router.process(
             LLMSignal(
                 payload=LLMSignal.FinishedPayload(llm_response_text=llm_response)
@@ -164,6 +171,7 @@ class StartConversation:
         built_up_audio = np.array(self._audio_to_text_buffer).flatten()
         self._audio_to_text_buffer.clear()
 
+        self._ctx.is_assistant_processing = True
         self._active_turn = self._loop.create_task(
             self._run_response_pipeline(built_up_audio)
         )
@@ -174,10 +182,11 @@ class StartConversation:
                 STTSignal(payload=STTSignal.StartedPayload()), self._ctx
             )
 
-            user_text = self._stt.generate_text(built_up_audio)
+            user_text = await asyncio.to_thread(self._stt.generate_text, built_up_audio)
             await self._event_router.process(
                 STTSignal(payload=STTSignal.FinishedPayload(transcription=user_text)),
                 self._ctx,
             )
         finally:
             self._active_turn = None
+            self._ctx.is_assistant_processing = False

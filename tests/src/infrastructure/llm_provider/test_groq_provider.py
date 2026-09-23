@@ -117,5 +117,6 @@ def test_generate_response_accumulates_conversation_history(
     assert second_call_messages == [
         {"role": "system", "content": "you are a helpful assistant"},
         {"role": "user", "content": "first message"},
+        {"role": "assistant", "content": "first reply"},
         {"role": "user", "content": "second message"},
     ]
