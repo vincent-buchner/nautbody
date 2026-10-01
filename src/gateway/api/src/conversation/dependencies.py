@@ -1,0 +1,49 @@
+from collections.abc import AsyncIterator
+from pathlib import Path
+
+from application.conversation.use_cases.start_conversation.start_conversation import (
+    StartConversation,
+)
+from infrastructure.llm_provider import GroqModelConfig, GroqProvider
+from infrastructure.stt.fast_whisper import FastWhisperTTS
+from infrastructure.tts.chatterbox import ChatterboxTTS
+from infrastructure.vad.silero import SileroVAD
+
+SAMPLE_AUDIO_PATH = (
+    Path(__file__).parent.parent.parent.parent
+    / "tests/src/infrastructure/audio/test_audio_input.flac"
+)
+
+# NOTE: Must be 8_000 or 16_000 per SileroVAD
+SAMPLE_RATE = 16_000
+LLM_SYSTEM_PROMPT = "You are a helpful voice assistant. Keep responses brief."
+
+LLM_SYSTEM_PROMPT = "You are a helpful voice assistant. Keep responses brief."
+LLM_MODEL_CONFIG = GroqModelConfig(
+    model="openai/gpt-oss-20b",
+    temperature=0.7,
+    max_completion_tokens=256,
+    top_p=1,
+    stop=None,
+)
+
+# FIXME: Create a strong singleton pattern
+llm = GroqProvider(system_prompt=LLM_SYSTEM_PROMPT, model_config=LLM_MODEL_CONFIG)
+stt = FastWhisperTTS()
+tts = ChatterboxTTS(sample_audio_path=SAMPLE_AUDIO_PATH)
+vad = SileroVAD(sample_rate=SAMPLE_RATE)
+
+
+def make_start_conversation_use_case(
+    audio_chunks: AsyncIterator[bytes],
+) -> StartConversation:
+
+    conversation = StartConversation(
+        llm_provider=llm,
+        stt=stt,
+        tts=tts,
+        vad=vad,
+        audio_chunks=audio_chunks,
+    )
+
+    return conversation

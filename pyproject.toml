@@ -21,6 +21,7 @@ dependencies = [
   "pydantic>=2.13.4",
   "ml-dtypes>=0.5",
   "chatterbox-tts",
+  "fastapi[standard]>=0.141.1",
 ]
 
 [tool.pytest.ini_options]
