@@ -1,7 +1,10 @@
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from .src.conversation.router import router as conversation_router
+
+load_dotenv()
 
 app = FastAPI()
 app.include_router(conversation_router)

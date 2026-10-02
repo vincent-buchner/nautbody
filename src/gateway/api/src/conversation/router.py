@@ -1,4 +1,3 @@
-import asyncio
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, WebSocket
@@ -8,15 +7,7 @@ from gateway.api.src.conversation.service import (
     register_ws_handlers,
 )
 
-
-async def audio_chunks_from_queue(
-    queue: asyncio.Queue[bytes],
-) -> AsyncIterator[bytes]:
-    while True:
-        yield await queue.get()
-
-
-router = APIRouter(prefix="conversation")
+router = APIRouter(prefix="/conversation")
 
 
 @router.websocket("/connect")

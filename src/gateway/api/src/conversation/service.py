@@ -54,10 +54,7 @@ class WebSocketConversationHandler:
         self,
         event: AssistantSpeakingFinishedEvent,
     ) -> None:
-        res = EventMessage(
-            event.__class__.__name__, {"audio_bytes": event.audio_response}
-        )
-        await self._ws.send_json(res.to_dict())
+        await self._ws.send_bytes(event.audio_response)
 
 
 def register_ws_handlers(
@@ -77,12 +74,12 @@ def register_ws_handlers(
     conversation.on(AssistantTranscriptionStartedEvent, handlers.send_event_name)
     conversation.on(
         AssistantTranscriptionFinishedEvent,
-        handlers.send_event_name,
+        handlers.handle_assistant_response_finished,
     )
     conversation.on(AssistantSpeakingStartedEvent, handlers.send_event_name)
     conversation.on(
         AssistantSpeakingFinishedEvent,
-        handlers.send_event_name,
+        handlers.handle_assistant_speaking_stopped,
     )
     conversation.on(
         AssistantSpeakingCancelledEvent,

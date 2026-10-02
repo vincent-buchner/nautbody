@@ -1,6 +1,8 @@
 from collections.abc import AsyncIterator
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from application.conversation.use_cases.start_conversation.start_conversation import (
     StartConversation,
 )
@@ -9,9 +11,11 @@ from infrastructure.stt.fast_whisper import FastWhisperTTS
 from infrastructure.tts.chatterbox import ChatterboxTTS
 from infrastructure.vad.silero import SileroVAD
 
+load_dotenv()
+
+
 SAMPLE_AUDIO_PATH = (
-    Path(__file__).parent.parent.parent.parent
-    / "tests/src/infrastructure/audio/test_audio_input.flac"
+    Path(__file__).parents[5] / "tests/src/infrastructure/audio/test_audio_input.flac"
 )
 
 # NOTE: Must be 8_000 or 16_000 per SileroVAD
