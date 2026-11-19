@@ -1,16 +1,22 @@
 <script setup lang="ts">
-import { useMicrophone } from "@@/src/core/userMedia/microphone/useMicrophone";
-import { useSpeaker } from "@@/src/core/userMedia/speaker/useSpeaker";
+import { useMicrophone } from "@@/src/core/userMedia";
+import { useSpeaker } from "@@/src/core/userMedia";
 import { useConversationConnection } from "../_model/useConversationConnection";
 
-const onOpen = () => {
+// mic.end() is a no-op while start() is in flight (running flips true only
+// after subscribe()), so onClose awaits this first — otherwise disconnecting
+// during the permission prompt leaks the mic.
+let startPromise: Promise<void> = Promise.resolve();
+
+const onOpen = async () => {
   speaker.unlock();
-  mic.start();
+  startPromise = mic.start();
+  await startPromise;
 };
 
 const onMessage = (event: MessageEvent<string | ArrayBuffer>) => {
   if (typeof event.data === "string") {
-    const { event_type, body } = JSON.parse(event.data);
+    const { event_type } = JSON.parse(event.data);
     if (event_type === "AssistantSpeakingCancelledEvent") speaker.stop();
     return;
   }
@@ -20,9 +26,12 @@ const onMessage = (event: MessageEvent<string | ArrayBuffer>) => {
   });
 };
 
-const onClose = () => {
+const onClose = async (event?: CloseEvent) => {
+  await startPromise.catch(() => {});
   void mic.end();
   speaker.stop();
+
+  if (event !== undefined) console.warn(`Closed WS: ${event.reason}`);
 };
 
 const onError = () => {
@@ -43,13 +52,12 @@ const { connectionStatus, connect, disconnect, send } =
 const mic = useMicrophone({
   sample_rate: 16_000,
   channel_count: 1,
-  sample_format: "float32",
   onStart: () => console.log("[mic] started"),
   onEnd: () => console.log("[mic] stopped"),
   onRestart: () => console.log("[mic] restarted"),
   // Frames arrive already laid out for the wire (float32 @ 16 kHz, 512
   // samples), so this is a straight handoff to the socket.
-  onAudio: (frame: ArrayBufferLike) => {
+  onAudio: (frame: ArrayBuffer) => {
     send(frame);
   },
 });

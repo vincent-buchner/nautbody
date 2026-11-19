@@ -1,12 +1,12 @@
-import { ref, onScopeDispose } from "vue";
+import { ref, readonly, onScopeDispose } from "vue";
 
 type WebSocketConnectionStatus = "connected" | "pending" | "disconnected";
 
 interface UseConversationHandlers {
-  onOpen: () => void;
+  onOpen: () => Promise<void>;
   // FIXME: Get type from contract
   onMessage: (event: MessageEvent<string | ArrayBuffer>) => void;
-  onClose: () => void;
+  onClose: (event?: CloseEvent) => void;
   onError: () => void;
 }
 
@@ -23,8 +23,14 @@ const useConversationConnection = ({
   let ws: WebSocket | null = null;
   const connectionStatus = ref<WebSocketConnectionStatus>("disconnected");
 
+  const _teardown = (event?: CloseEvent) => {
+    ws = null;
+    connectionStatus.value = "disconnected";
+    handlers.onClose(event);
+  };
+
   const connect = () => {
-    if (connectionStatus.value === "connected") return;
+    if (connectionStatus.value !== "disconnected") return;
     try {
       ws = new WebSocket(url);
     } catch (err: unknown) {
@@ -33,22 +39,32 @@ const useConversationConnection = ({
     ws.binaryType = "arraybuffer";
     connectionStatus.value = "pending";
 
-    ws.onopen = () => {
-      connectionStatus.value = "connected";
-      handlers.onOpen();
-    };
-    ws.onmessage = handlers.onMessage;
-    ws.onerror = handlers.onError;
-    ws.onclose = () => {
+    const socket = ws;
+    ws.onopen = async () => {
       try {
-        handlers.onClose();
-      } finally {
+        await handlers.onOpen();
+      } catch {
         disconnect();
+        return;
       }
+
+      if (ws !== socket) return;
+      connectionStatus.value = "connected";
+    };
+    ws.onmessage = (event) => {
+      if (ws === socket) handlers.onMessage(event);
+    };
+    ws.onerror = () => {
+      if (ws === socket) handlers.onError();
+    };
+
+    socket.onclose = (event) => {
+      if (ws !== socket) return;
+      _teardown(event);
     };
   };
 
-  const send = (payload: string | ArrayBufferLike) => {
+  const send = (payload: ArrayBuffer) => {
     if (ws === null || ws.readyState !== WebSocket.OPEN) return false;
 
     ws.send(payload);
@@ -59,10 +75,8 @@ const useConversationConnection = ({
     const socket = ws;
     ws = null;
     if (socket === null) return;
-    connectionStatus.value = "disconnected";
 
-    // NOTE: Ugly line of code, but just reset all the handlers
-    socket.onopen = socket.onmessage = socket.onclose = socket.onerror = null;
+    _teardown();
 
     if (socket.readyState < WebSocket.CLOSING) {
       socket.close();
@@ -72,7 +86,7 @@ const useConversationConnection = ({
   onScopeDispose(disconnect);
 
   return {
-    connectionStatus,
+    connectionStatus: readonly(connectionStatus),
     connect,
     send,
     disconnect,

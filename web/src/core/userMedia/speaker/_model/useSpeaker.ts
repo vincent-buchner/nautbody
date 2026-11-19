@@ -1,19 +1,16 @@
 import { onScopeDispose } from "vue";
 
-/**
- * Backend TTS wire contract: `ChatterboxTTS.generate_audio` returns
- * `torch.from_numpy(wav).unsqueeze(0).numpy().tobytes()` — mono float32 LE at
- * S3GEN_SR = 24_000 Hz — and the gateway sends that whole buffer as a single
- * binary WebSocket frame (service.py: handle_assistant_speaking_stopped).
- */
-const DEFAULT_SAMPLE_RATE = 24_000;
-const CHANNELS = 1;
-const BYTES_PER_SAMPLE = Float32Array.BYTES_PER_ELEMENT;
-
 interface UseSpeakerParams {
-  /** Sample rate of the incoming PCM. Must match the backend's TTS output. */
-  sample_rate?: number;
+  sample_rate: number;
+  channels: number;
+  bytes_per_sample: number;
 }
+
+const DEFAULT_USE_SPEAKER_PARAMS: UseSpeakerParams = {
+  sample_rate: 24_000,
+  channels: 1,
+  bytes_per_sample: Float32Array.BYTES_PER_ELEMENT,
+};
 
 /**
  * Plays raw PCM clips received from the conversation socket.
@@ -25,8 +22,11 @@ interface UseSpeakerParams {
  * context can stay at the device default (often 48 kHz) and the browser
  * resamples the 24 kHz clip on playback.
  */
-const useSpeaker = (params: UseSpeakerParams = {}) => {
-  const sampleRate = params.sample_rate ?? DEFAULT_SAMPLE_RATE;
+const useSpeaker = (params: Partial<UseSpeakerParams>) => {
+  const { sample_rate, channels, bytes_per_sample } = {
+    ...DEFAULT_USE_SPEAKER_PARAMS,
+    ...params,
+  };
 
   let context: AudioContext | null = null;
   let source: AudioBufferSourceNode | null = null;
@@ -62,7 +62,7 @@ const useSpeaker = (params: UseSpeakerParams = {}) => {
 
   async function play(bytes: ArrayBuffer): Promise<void> {
     if (bytes.byteLength === 0) return;
-    if (bytes.byteLength % BYTES_PER_SAMPLE !== 0) {
+    if (bytes.byteLength % bytes_per_sample !== 0) {
       console.warn(
         `[speaker] dropping ${bytes.byteLength}-byte frame: not float32 PCM`,
       );
@@ -75,10 +75,11 @@ const useSpeaker = (params: UseSpeakerParams = {}) => {
     // One clip per assistant response, so replace rather than mix. This also
     // silences a stale response: an interruption cancels generation, but the
     // backend cannot recall bytes it already sent.
+    // TODO: Make this more responsive to the interrupt event that comes back
     stop();
 
     const samples = new Float32Array(bytes);
-    const buffer = ctx.createBuffer(CHANNELS, samples.length, sampleRate);
+    const buffer = ctx.createBuffer(channels, samples.length, sample_rate);
     buffer.copyToChannel(samples, 0);
 
     const node = ctx.createBufferSource();

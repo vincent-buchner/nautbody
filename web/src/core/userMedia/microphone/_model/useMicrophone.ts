@@ -1,8 +1,5 @@
 import { onScopeDispose, shallowRef } from "vue";
 
-import { toWire } from "./toWire";
-import type { SampleFormat } from "./toWire";
-
 /**
  * `@picovoice/web-voice-processor` reaches for `window.AudioContext` and
  * `navigator.mediaDevices`, so it must never be evaluated on the server. See
@@ -19,9 +16,7 @@ async function loadWebVoiceProcessor(): Promise<WebVoiceProcessorClass> {
   // holding an external it cannot resolve, since the package is not shipped
   // in .output/server/node_modules. Reaching it server-side is a bug.
   if (!import.meta.client) {
-    throw new Error(
-      "[useMicrophone] microphone capture is browser-only",
-    );
+    throw new Error("[useMicrophone] microphone capture is browser-only");
   }
 
   cachedWebVoiceProcessor ??= (await import("@picovoice/web-voice-processor"))
@@ -29,31 +24,25 @@ async function loadWebVoiceProcessor(): Promise<WebVoiceProcessorClass> {
   return cachedWebVoiceProcessor;
 }
 
-/** What the lifecycle callbacks receive. */
 interface MicrophoneInfo {
   sample_rate: number;
   channel_count: number;
-  sample_format: SampleFormat;
 }
 
 interface UseMicrophoneParams {
-  /** Output sample rate in Hz. Must match the backend's SAMPLE_RATE. */
   sample_rate: number;
-  /** Channels per frame. The library captures mono, so only 1 is valid. */
   channel_count: number;
-  /** Byte layout of each emitted frame. */
-  sample_format: SampleFormat;
+  frame_length: number;
   onStart: (info: MicrophoneInfo) => void;
   onEnd: () => void;
   onRestart: (info: MicrophoneInfo) => void;
-  /** One wire-ready frame per VAD window. */
-  onAudio: (frame: ArrayBufferLike) => void;
+  onAudio: (frame: ArrayBuffer) => void;
 }
 
 const DEFAULT_PARAMS: UseMicrophoneParams = {
   sample_rate: 16_000,
   channel_count: 1,
-  sample_format: "float32",
+  frame_length: 512,
   onStart: () => {},
   onEnd: () => {},
   onRestart: () => {},
@@ -61,19 +50,12 @@ const DEFAULT_PARAMS: UseMicrophoneParams = {
 };
 
 /**
- * Silero's analysis window, not a free parameter: the backend reinterprets
- * each incoming chunk under VAD_CHUNK_SIZE = 512 (gateway/cli/main.py:20),
- * so a different frame size would feed the VAD sliced audio.
- */
-const FRAME_LENGTH = 512;
-
-/**
  * Microphone capture built on `@picovoice/web-voice-processor`.
  *
  * The library owns the AudioWorklet, the resampling worker and the WASM
  * resampler — it emits Int16Array frames of `frame_length` samples at
  * `sample_rate`. This composable owns the lifecycle and formats those frames
- * for the wire via `toWire`.
+ * for the backend via convertInt16ArrayToFloat32.
  *
  *   const mic = useMicrophone({ onAudio: (bytes) => ws.send(bytes) });
  *   await mic.start();
@@ -83,16 +65,21 @@ const FRAME_LENGTH = 512;
  * microphone, this composable is not designed for two instances running
  * concurrently.
  */
-const useMicrophone = (params: Partial<UseMicrophoneParams> = {}) => {
+const useMicrophone = (params: Partial<UseMicrophoneParams>) => {
+  // NOTE: We have to destructure it this way in order to take defaults
+  // from the potential undefined properties
   const {
     sample_rate,
     channel_count,
-    sample_format,
+    frame_length,
     onStart,
     onEnd,
     onRestart,
     onAudio,
-  } = { ...DEFAULT_PARAMS, ...params };
+  } = {
+    ...DEFAULT_PARAMS,
+    ...params,
+  };
 
   const running = shallowRef(false);
 
@@ -100,7 +87,7 @@ const useMicrophone = (params: Partial<UseMicrophoneParams> = {}) => {
     onmessage: (event: MessageEvent) => {
       const frame = event.data?.inputFrame;
       if (frame instanceof Int16Array && frame.length > 0) {
-        onAudio(toWire(frame, sample_format));
+        onAudio(convertInt16ArrayToFloat32(frame));
       }
     },
   };
@@ -117,26 +104,22 @@ const useMicrophone = (params: Partial<UseMicrophoneParams> = {}) => {
       );
     }
 
-    // Must run before subscribe(): without forceUpdate, setOptions only takes
-    // effect on engines subscribed afterwards.
     const wvp = await loadWebVoiceProcessor();
     wvp.setOptions({
       outputSampleRate: sample_rate,
-      frameLength: FRAME_LENGTH,
+      frameLength: frame_length,
     });
 
     try {
       await wvp.subscribe(engine);
     } catch (err) {
       running.value = false;
-      // The library maps getUserMedia failures to named WvpErrors
-      // (PermissionError, DeviceMissingError, DeviceReadError).
       throw err;
     }
 
     running.value = true;
     if (notify) {
-      onStart({ sample_rate, channel_count, sample_format });
+      onStart({ sample_rate, channel_count });
     }
   };
 
@@ -145,9 +128,6 @@ const useMicrophone = (params: Partial<UseMicrophoneParams> = {}) => {
     running.value = false;
 
     try {
-      // doStart() already cached the module, so this cannot re-import or fail.
-      // The engine leaves the set synchronously on entry, so frames stop
-      // arriving immediately even though teardown continues asynchronously.
       const wvp = await loadWebVoiceProcessor();
       await wvp.unsubscribe(engine);
     } catch (err) {
@@ -157,15 +137,15 @@ const useMicrophone = (params: Partial<UseMicrophoneParams> = {}) => {
     if (notify) onEnd();
   };
 
-  const start = (): Promise<void> => doStart(true);
+  const start = () => doStart(true);
 
-  const end = (): Promise<void> => doEnd(true);
+  const end = () => doEnd(true);
 
   /** Tears down and starts again, firing only `onRestart`. */
   const restart = async (): Promise<void> => {
     await doEnd(false);
     await doStart(false);
-    onRestart({ sample_rate, channel_count, sample_format });
+    onRestart({ sample_rate, channel_count });
   };
 
   onScopeDispose(() => {
@@ -175,5 +155,9 @@ const useMicrophone = (params: Partial<UseMicrophoneParams> = {}) => {
   return { start, end, restart, running };
 };
 
+function convertInt16ArrayToFloat32(frame: Int16Array) {
+  return Float32Array.from(frame, (s) => s / 32768).buffer;
+}
+
 export { useMicrophone };
-export type { MicrophoneInfo, SampleFormat, UseMicrophoneParams };
+export type { MicrophoneInfo, UseMicrophoneParams };
